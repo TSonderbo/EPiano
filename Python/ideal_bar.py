@@ -16,7 +16,7 @@ def sim():
     L = 0.1564
     rho = 7850 #material Density
     r = 1.524 * 10 **-3
-    A = math.pi * r**2 #cross-sectinal area
+    A = math.pi * r**2 #cross-sectional area
     E = 2*10**11 #young's Modulus
     I = math.pi * r**4 / 4 #inertia
 
@@ -51,15 +51,15 @@ def sim():
     #Hammer model
     F = np.zeros(N+1) # Hammer impact force vector - to calculate force across a vector for interpolation
     f_k = 1.5 * 10**11 #Hammer stiffness/Spring constant
-    f_alpha = 2.5 #Local geometry of impact coefficient - typically in range [1.5, 3.5]
-    f_mu = 0.5
+    f_alpha = 2.8 #Local geometry of impact coefficient - typically in range [1.5, 3.5]
+    f_mu = 0.6
     f_m = 1.1 * 10**-2 #Hammer mass
     f_vIn = 4 #Initial velocity (m/s) typical range [1, 4] - Would be mapped to mpe-midi input
     f_u = -1*10**-4 #Current hammer position
     f_uPrev = f_u - k*f_vIn #Set initial velocity
     f_uNext = 0
     f_ratio = f_m / (rho*A*L)
-    f_contact = math.floor(N*0.5)
+    f_contact = math.floor(N*0.3)
     x = 0 #Compression
     xPrev = 0 #Previous Compression
 
@@ -72,9 +72,9 @@ def sim():
     etaStar = np.zeros(N)
     etaPrev = np.zeros(N)
     d_kappa = 0 #
-    d_K = 10**4 #damper stiffness
+    d_K = 1*10**3 #damper stiffness
     d_alpha = 1.3 #damper coefficient
-    d_contact = range(int(N*0.5), int(N*0.9)) #contact range
+    d_contact = range(int(N*0.8), int(N*0.9)) #contact range
     d_b = 0.00000001 #damper position
 
     #output
@@ -115,7 +115,8 @@ def sim():
                 + (4*muSq + ((2*sigma_1*k)/hSq))*(u[l+1] + u[l-1]) \
                 - muSq*(u[l+2] + u[l-2]) + (-1+sigma_0*k+((4*sigma_1*k)/hSq))*uPrev[l] \
                 - ((2*sigma_1*k)/hSq) * (uPrev[l+1] + uPrev[l-1])) \
-                /(1+sigma_0*k) + (f_ratio * F[l] * k**2) 
+                + (f_ratio * F[l] * k**2 * 10) \
+                /(1+sigma_0*k) 
         
         uStar = np.copy(uNext)
                 
@@ -185,5 +186,5 @@ output, f_out, x_out = sim()
 plt.plot(x_out, f_out)
 plt.show()
 
-plt.plot(output)
+plt.plot(output * 100)
 plt.show()

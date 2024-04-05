@@ -15,6 +15,7 @@
       <FILE id="P7w85m" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <GROUP id="{D7FB18B4-9D6B-4C68-FCF5-28B3DFA93AEF}" name="Util">
+        <FILE id="qeszK8" name="DynamicGrid.h" compile="0" resource="0" file="Source/DynamicGrid.h"/>
         <FILE id="tqm0Yc" name="AudioBufferQueue.h" compile="0" resource="0"
               file="Source/AudioBufferQueue.h"/>
         <FILE id="OYpimK" name="AudioBufferQueue.cpp" compile="1" resource="0"

@@ -14,6 +14,7 @@
 #include "Hammer.h"
 #include "TineLengths.h"
 #include "Definitions.h"
+#include "DynamicGrid.h"
 
 class Tine
 {
@@ -40,10 +41,10 @@ private:
 	//Material properties
 	float L; //Length - From Tine Length Config
 	float rho = 7850.0f; //Material density
-	float r = 1.524 * pow(10, -3); //Radius
+	float r = 1.524f * pow(10, -3); //Radius
 	float A = juce::MathConstants<float>::pi * pow(r, 2); //Cross-sectional area
-	float E = 2 * pow(10, 11); //Young's modulus
-	float I = juce::MathConstants<float>::pi * pow(r, 4) / 4; //Inertia
+	float E = 2.0f * pow(10, 11); //Young's modulus
+	float I = juce::MathConstants<float>::pi * pow(r, 4) / 4.0f; //Inertia
 
 	//Coefficients
 	float kappa = sqrtf((E*I)/(rho*A)); //Stiffness coefficient
@@ -51,8 +52,8 @@ private:
 	float muSq; //Coefficient
 
 	//Damping
-	float sigma_0 = 0.005; //Freq. dependent damping
-	float sigma_1 = 0.0001; //Freq. independent damping
+	float sigma_0 = 0.005f; //Freq. dependent damping
+	float sigma_1 = 0.0001f; //Freq. independent damping
 
 	//Grid
 	int N; //Number of grid intervals
@@ -69,6 +70,8 @@ private:
 	Hammer hammer; //Hammer
 	std::vector<float> h_contact; //Hammer contact distribution
 	float h_ratio;
+
+	DynamicGrid<float> grid;
 
 	//==============================================================================
 	void calculateScheme();

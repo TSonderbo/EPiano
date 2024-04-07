@@ -17,7 +17,7 @@ Hammer::Hammer()
 
 void Hammer::prepareToPlay(double sampleRate, int tineNumber, const std::vector<float> contact, int N)
 {
-    k = 1 / (sampleRate * OVERSAMPLING);
+    k = 1 / (sampleRate * config::oversampling);
 
     this->contact = contact;
     this->N = N;

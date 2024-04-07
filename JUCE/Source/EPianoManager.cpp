@@ -12,7 +12,7 @@
 
 
 
-EPianoManager::EPianoManager() : tines(TINE_COUNT)
+EPianoManager::EPianoManager() : tines(config::tine::count)
 {
 
 }
@@ -21,7 +21,7 @@ void EPianoManager::prepareToPlay(double sampleRate)
 {
     setCurrentPlaybackSampleRate(sampleRate);
 
-    for (int i = 0; i < TINE_COUNT; i++)
+    for (int i = 0; i < config::tine::count; i++)
     {
         tines[i].prepareToPlay(sampleRate, i);
     }
@@ -29,7 +29,7 @@ void EPianoManager::prepareToPlay(double sampleRate)
 
 void EPianoManager::noteAdded(juce::MPENote newNote)
 {
-    if (newNote.initialNote < MPE_MIN_NOTE || newNote.initialNote > MPE_MAX_NOTE) // Below lowest tine or above highest
+    if (newNote.initialNote < config::mpe::minNote || newNote.initialNote > config::mpe::maxNote) // Below lowest tine or above highest
         return;
 
     int noteNumber = newNote.initialNote - 28;
@@ -46,10 +46,10 @@ void EPianoManager::notePitchbendChanged(juce::MPENote changedNote)
 
 void EPianoManager::noteReleased(juce::MPENote finishedNote)
 {
-    if (finishedNote.initialNote < MPE_MIN_NOTE || finishedNote.initialNote > MPE_MAX_NOTE) // Below lowest tine or above highest
+    if (finishedNote.initialNote < config::mpe::minNote || finishedNote.initialNote > config::mpe::maxNote) // Below lowest tine or above highest
         return;
 
-    int noteNumber = finishedNote.initialNote - MPE_MIN_NOTE;
+    int noteNumber = finishedNote.initialNote - config::mpe::minNote;
 
     tines[noteNumber].stopNote();
 }

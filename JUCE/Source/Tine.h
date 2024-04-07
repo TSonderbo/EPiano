@@ -13,8 +13,7 @@
 #include <JuceHeader.h>
 #include "Hammer.h"
 #include "TineLengths.h"
-#include "Definitions.h"
-#include "DynamicGrid.h"
+#include "Configuration.h"
 
 class Tine
 {
@@ -36,7 +35,7 @@ private:
 	float kSq; //Sampling period squared
 	int outLoc;
 	int inactiveTimer;
-	int inactiveTimerItterator;
+	int inactiveTimerIterator;
 
 	//Material properties
 	float L; //Length - From Tine Length Config
@@ -52,7 +51,7 @@ private:
 	float muSq; //Coefficient
 
 	//Damping
-	float sigma_0 = 0.005f; //Freq. dependent damping
+	float sigma_0 = 0.05f; //Freq. dependent damping
 	float sigma_1 = 0.0001f; //Freq. independent damping
 
 	//Grid
@@ -61,21 +60,38 @@ private:
 	float hSq; //Grid spacing squared
 
 	//States
-	std::vector<std::vector<float>> uStates; //3 by N+1 state matrix
-	std::vector<float*> u; //uStates pointer
+	std::vector<std::vector<float>> uStates; //3 by Mu+1 state matrix
+	std::vector<std::vector<float>> wStates; //3 by Mw+1 state matrix
+
+	std::vector<std::vector<float>::iterator> u; //uStates iterators
+	std::vector<std::vector<float>::iterator> w; //wStates iterators
+
+	//Dynamic Grid
+	float N_frac; //Fractional grid intervals
+	float alpha;
+	float interp[4]; //Cubic inpterpolation coefficient matrix
+	float interpFlip[4]; //Flipped cubic inpterpolation coefficient matrix
+	int M_u;
+	int M_w;
+
+
+	//Activity states
 	bool isActive;
 	bool isStopped;
 
 	//Excitation
-	Hammer hammer; //Hammer
+	Hammer hammer;
 	std::vector<float> h_contact; //Hammer contact distribution
-	float h_ratio;
-
-	DynamicGrid<float> grid;
+	float h_ratio; //Hammer-Tine mass ratio
 
 	//==============================================================================
 	void calculateScheme();
 	void updateStates();
 	void resetScheme();
+	void updateGridpoints(int Nnew);
+	void addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::vector<float>>& sec);
+	void removeGridpoint(std::vector<std::vector<float>>& grid);
+	void calculateInterpolation();
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

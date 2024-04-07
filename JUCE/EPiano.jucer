@@ -5,6 +5,7 @@
   <MAINGROUP id="FOlwW6" name="EPiano">
     <GROUP id="{286DA3B9-0C1F-4203-D871-17D49232E4CA}" name="Source">
       <GROUP id="{3D3B6CEF-3C18-90F6-C0D9-35EC549D7FC2}" name="Configuration">
+        <FILE id="MWJqrX" name="Configuration.h" compile="0" resource="0" file="Source/Configuration.h"/>
         <FILE id="D9hVVV" name="TineLengths.h" compile="0" resource="0" file="Source/TineLengths.h"/>
       </GROUP>
       <FILE id="zbLLHK" name="PluginProcessor.h" compile="0" resource="0"
@@ -15,7 +16,6 @@
       <FILE id="P7w85m" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <GROUP id="{D7FB18B4-9D6B-4C68-FCF5-28B3DFA93AEF}" name="Util">
-        <FILE id="qeszK8" name="DynamicGrid.h" compile="0" resource="0" file="Source/DynamicGrid.h"/>
         <FILE id="tqm0Yc" name="AudioBufferQueue.h" compile="0" resource="0"
               file="Source/AudioBufferQueue.h"/>
         <FILE id="OYpimK" name="AudioBufferQueue.cpp" compile="1" resource="0"
@@ -24,7 +24,6 @@
               file="Source/ScopeDataCollector.h"/>
         <FILE id="HJJfEq" name="ScopeDataCollector.cpp" compile="1" resource="0"
               file="Source/ScopeDataCollector.cpp"/>
-        <FILE id="MWJqrX" name="Definitions.h" compile="0" resource="0" file="Source/Definitions.h"/>
       </GROUP>
       <GROUP id="{C66336A3-CAA0-18AF-53A9-9EAC3D96F123}" name="Synth">
         <FILE id="LfPs00" name="Damper.h" compile="0" resource="0" file="Source/Damper.h"/>

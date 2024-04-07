@@ -200,8 +200,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout EPianoAudioProcessor::create
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
     //Inserts params here...
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(ID_VELOCITY, NAME_VELOCITY, juce::NormalisableRange<float>(0.1f, 20.0f), 10.0f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(ID_AMPLITUDE, NAME_AMPLITUDE, juce::NormalisableRange<float>(0.1f, 100.0f), 50.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(config::parameter::id_velocity, config::parameter::name_velocity, juce::NormalisableRange<float>(0.1f, 20.0f), 10.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(config::parameter::id_amplitude, config::parameter::name_amplitude , juce::NormalisableRange<float>(0.1f, 100.0f), 50.0f));
 
     return { params.begin(), params.end() };
 }

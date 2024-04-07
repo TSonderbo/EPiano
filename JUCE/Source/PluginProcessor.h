@@ -12,7 +12,7 @@
 #include "EPianoManager.h"
 #include "ScopeDataCollector.h"
 #include "AudioBufferQueue.h"
-#include "Definitions.h"
+#include "Configuration.h"
 
 //==============================================================================
 /**

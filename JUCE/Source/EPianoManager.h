@@ -10,6 +10,7 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include "Configuration.h"
 #include "Tine.h"
 
 class EPianoManager : public juce::MPESynthesiserBase

@@ -10,7 +10,7 @@
 
 #pragma once
 #include <JuceHeader.h>
-#include "Definitions.h"
+#include "Configuration.h"
 
 class Hammer
 {

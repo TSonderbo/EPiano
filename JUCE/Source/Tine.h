@@ -69,8 +69,10 @@ private:
 	//Dynamic Grid
 	float N_frac; //Fractional grid intervals
 	float alpha;
+	float Iterm; //Interpolation term
+	float J[4]; //
 	float interp[4]; //Cubic inpterpolation coefficient matrix
-	float interpFlip[4]; //Flipped cubic inpterpolation coefficient matrix
+	
 	int M_u;
 	int M_w;
 

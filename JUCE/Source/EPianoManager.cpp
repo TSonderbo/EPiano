@@ -41,7 +41,14 @@ void EPianoManager::noteAdded(juce::MPENote newNote)
 
 void EPianoManager::notePitchbendChanged(juce::MPENote changedNote)
 {
-    //TODO Dynamic Grid for this
+    if (changedNote.initialNote < config::mpe::minNote || changedNote.initialNote > config::mpe::maxNote) // Below lowest tine or above highest
+        return;
+
+    int i = changedNote.initialNote - config::mpe::minNote;
+
+    float bend = changedNote.pitchbend.asSignedFloat();
+
+    tines[i].setLength(bend);
 }
 
 void EPianoManager::noteReleased(juce::MPENote finishedNote)

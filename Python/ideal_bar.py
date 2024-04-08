@@ -4,6 +4,7 @@ import math
 import matplotlib.pyplot as plt
 from numba import njit
 from scipy.fftpack import fft, fftfreq
+import sounddevice as sd
 
 @njit
 def sim():
@@ -153,7 +154,8 @@ def sim():
         + (4*muSq + (2*sigma_1*k)/(hSq)) * u[N-2] \
         - muSq*u[N-3]
         + (-1 + sigma_0 * k + (4*sigma_1*k)/hSq)*uPrev[N-1]
-        - ((2*sigma_1*k)/(hSq))*(uPrev[N-2] + uPrev[N]))
+        - ((2*sigma_1*k)/(hSq))*(uPrev[N-2] + uPrev[N])) \
+        /(1+sigma_0*k)
         
         uNext[N] = ((2 - 2*muSq - ((4 * sigma_1 * k) / hSq)) * u[N] \
         + (4 * muSq + ((4 * sigma_1 * k) / hSq)) * u[N-1] \

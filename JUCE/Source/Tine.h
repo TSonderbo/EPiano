@@ -24,6 +24,7 @@ public:
 	void prepareToPlay(double sampleRate, int tineNumber);
 	void startNote(float velocity);
 	void stopNote();
+	void setLength(float scalar);
 	float processSample();
 	bool getIsActive();
 
@@ -44,6 +45,9 @@ private:
 	float A = juce::MathConstants<float>::pi * pow(r, 2); //Cross-sectional area
 	float E = 2.0f * pow(10, 11); //Young's modulus
 	float I = juce::MathConstants<float>::pi * pow(r, 4) / 4.0f; //Inertia
+	float K = sqrtf(E / rho);
+	float freq;
+
 
 	//Coefficients
 	float kappa = sqrtf((E*I)/(rho*A)); //Stiffness coefficient
@@ -94,6 +98,5 @@ private:
 	void addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::vector<float>>& sec);
 	void removeGridpoint(std::vector<std::vector<float>>& grid);
 	void calculateInterpolation();
-
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

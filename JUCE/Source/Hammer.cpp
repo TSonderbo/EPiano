@@ -41,7 +41,7 @@ void Hammer::stopHammer()
     active = false;
 }
 
-float Hammer::calculateForce(const float* tine_u)
+float Hammer::calculateForce(std::vector<float>::iterator tine_u)
 {
     if (active == false)
     {

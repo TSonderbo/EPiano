@@ -37,6 +37,8 @@ void Tine::prepareToPlay(double sampleRate, int tineNumber)
 	mu = (kappa * k) / hSq;
 	muSq = mu * mu;
 
+	freq = 1.426f * (juce::MathConstants<float>::pi * K) / (16 * L * L) * sqrtf(E / rho);
+
 	uStates = std::vector<std::vector<float>>(3, std::vector<float>(M_u + 1, 0));
 	wStates = std::vector<std::vector<float>>(3, std::vector<float>(M_w + 1, 0));
 
@@ -53,18 +55,17 @@ void Tine::prepareToPlay(double sampleRate, int tineNumber)
 		w[i] = wStates[i].begin();
 	}
 
-	h_contact.resize(N + 1, 0.0f);
+	h_contact.resize(M_u + 1, 0.0f);
 
-	//TODO Calculate h_contact - static for now
-	h_contact[static_cast<int>(0.33 * N)] = 1;
+	h_contact[static_cast<int>(0.5 * M_u)] = 1;
 	
-	hammer.prepareToPlay(sampleRate, tineNumber, h_contact, N);
+	hammer.prepareToPlay(sampleRate, tineNumber, h_contact, M_u);
 	h_ratio = hammer.getMass() / (rho * A * L);
-
-	//Read ouput at tip
-	outLoc = N;
 	
 	inactiveTimer = config::tine::inactiveTimer * sampleRate / config::oversampling;
+
+	//TODO add Iterm and J calculation
+	calculateInterpolation();
 }
 
 void Tine::startNote(float velocity)
@@ -102,14 +103,29 @@ float Tine::processSample()
 		calculateScheme();
 	}
 
-	sample = u[1][outLoc];
+	sample = w[1][0]; //Read output at tip
 
 	float gain = 1.0f;
 
 	if (isStopped == true)
-		gain = (1 / inactiveTimer) * inactiveTimerIterator;
+		gain = (1.0f / inactiveTimer) * inactiveTimerIterator;
 
 	return sample * gain;
+}
+
+void Tine::setLength(float scalar)
+{
+	float freq_new = freq * powf(2, scalar * 2 / 12);
+	float L_new = 1.426f * sqrtf(((juce::MathConstants<float>::pi * (r / 2.0f) * K) / freq_new) / 16.0f);
+
+	int Nprev = N;
+
+	N = static_cast<int>(L_new / h);
+
+	N_frac = L_new / h;
+	alpha = N_frac - N;
+
+	updateGridpoints(Nprev);
 }
 
 void Tine::calculateScheme()
@@ -119,7 +135,6 @@ void Tine::calculateScheme()
 	//Update loop - excluding outer and inner boundaries
 	for (int l = 2; l <= M_u - 2; l++)
 	{
-		//
 		u[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][l]
 			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (u[1][l + 1] + u[1][l - 1])
 			- muSq * (u[1][l + 2] + u[1][l - 2]) 
@@ -133,7 +148,6 @@ void Tine::calculateScheme()
 			- muSq * (w[1][l + 2] + w[1][l - 2]) 
 			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][l]
 			- ((2 * sigma_1 * k) / hSq) * (w[0][l + 1] + w[0][l - 1]))
-			+ (h_ratio * h_contact[l] * force * kSq)
 			/ (1 + sigma_0 * k);
 	}
 	
@@ -146,27 +160,65 @@ void Tine::calculateScheme()
 			- muSq * (w[1][l + 2] + w[1][l - 2])
 			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][l]
 			- ((2 * sigma_1 * k) / hSq) * (w[0][l + 1] + w[0][l - 1]))
-			+ (h_ratio * h_contact[l] * force * kSq)
 			/ (1 + sigma_0 * k);
 	}
 
-	//TODO Update equation for inner boundaries
-
-
-	//Free boundary update
-	w[2][1] = ((2 - 5 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][1]
-		+ ((2 * sigma_1 * k) / (hSq)+2 * muSq) * u[1][0]
-		+ (4 * muSq + (2 * sigma_1 * k) / (hSq)) * u[1][2]
-		- muSq * u[1][3]
-		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * u[0][1]
-		- ((2 * sigma_1 * k) / (hSq)) * (u[0][2] + u[0][0]))
+	//u inner boundary
+	u[2][M_u - 1] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][M_u - 1]
+		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u]
+		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u - 2]
+		- muSq * w[1][M_w]
+		- J[3] * muSq * w[1][M_w - 1]
+		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * u[0][M_u - 1]
+		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 2] + u[0][M_u]))
 		/ (1 + sigma_0 * k);
 
-	w[2][0] = ((2 - 2 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][0]
-		+ (4 * muSq + ((4 * sigma_1 * k) / hSq)) * u[1][1]
-		- muSq * 2 * u[1][2]
-		+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * u[0][0]
-		- ((2 * sigma_1 * k) / hSq) * (2 * u[0][1]))
+	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * (2 * sigma_1 * k) / hSq) * u[1][M_u]
+		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u - 1]
+		- muSq * u[1][M_u - 2]
+		- (J[1] * muSq - (2 * sigma_1 * k) / hSq) * w[1][M_w]
+		- (J[2] * muSq + Iterm) * w[1][M_w - 1]
+		- (J[3] * muSq) * w[1][M_w - 2]
+		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * u[0][M_u]
+		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 1] + w[0][M_w])
+		- (-Iterm * ((2 * sigma_1 * k) / hSq)) * w[0][M_w - 1])
+		/ (1 + sigma_0 * k);
+
+	//w inner boundary
+	w[2][M_w - 1] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][M_w - 1]
+		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w]
+		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w - 2]
+		- muSq * u[1][M_u]
+		- J[3] * muSq * u[1][M_u - 1]
+		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * w[0][M_w - 1]
+		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 2] + w[0][M_w]))
+		/ (1 + sigma_0 * k);
+
+	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * (2 * sigma_1 * k) / hSq) * w[1][M_w]
+		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w - 1]
+		- muSq * w[1][M_w - 2]
+		- (J[1] * muSq - (2 * sigma_1 * k) / hSq) * u[1][M_u]
+		- (J[2] * muSq + Iterm) * u[1][M_u - 1]
+		- (J[3] * muSq) * u[1][M_u - 2]
+		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * w[0][M_w]
+		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 1] + u[0][M_u])
+		- (-Iterm * ((2 * sigma_1 * k) / hSq)) * u[0][M_u - 1])
+		/ (1 + sigma_0 * k);
+
+	//Free boundary update
+	w[2][1] = ((2 - 5 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][1]
+		+ ((2 * sigma_1 * k) / (hSq)+2 * muSq) * w[1][0]
+		+ (4 * muSq + (2 * sigma_1 * k) / (hSq)) * w[1][2]
+		- muSq * w[1][3]
+		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * w[0][1]
+		- ((2 * sigma_1 * k) / (hSq)) * (w[0][2] + w[0][0]))
+		/ (1 + sigma_0 * k);
+
+	w[2][0] = ((2 - 2 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][0]
+		+ (4 * muSq + ((4 * sigma_1 * k) / hSq)) * w[1][1]
+		- muSq * 2 * w[1][2]
+		+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][0]
+		- ((2 * sigma_1 * k) / hSq) * (2 * w[0][1]))
 		/ (1 + sigma_0 * k);
 
 	updateStates();
@@ -201,22 +253,14 @@ void Tine::resetScheme()
 	}
 }
 
-void Tine::calculateInterpolation()
+void Tine::updateGridpoints(int Nprev)
 {
-	interp[0] = -alpha * (alpha + 1.0) / ((alpha + 2.0) * (alpha + 3.0));
-	interp[1] = 2.0 * alpha / (alpha + 2.0);
-	interp[2] = 2.0 / (alpha + 2.0);
-	interp[3] = -2.0 * alpha / ((alpha + 3.0) * (alpha + 2.0));
-}
-
-void Tine::updateGridpoints(int Nnew)
-{
-	if (abs(Nnew - N) > 1)
+	if (abs(Nprev - N) > 1)
 		throw std::invalid_argument("Addition of multiple new grid points is invalid");
 
-	if (Nnew > N) //Addition
+	if (Nprev < N) //Addition
 	{
-		if (Nnew % 2 == 0) //Even - Add to w
+		if (N % 2 == 0) //Even - Add to w
 		{
 			addGridpoint(wStates, uStates);
 		}
@@ -227,7 +271,7 @@ void Tine::updateGridpoints(int Nnew)
 	}
 	else //Removal
 	{
-		if (Nnew % 2 == 0) //Even  - Remove from u
+		if (N % 2 == 0) //Even  - Remove from u
 		{
 			removeGridpoint(uStates);
 		}
@@ -251,7 +295,10 @@ void Tine::removeGridpoint(std::vector<std::vector<float>>& grid)
 
 void Tine::addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::vector<float>>& sec)
 {
-	calculateInterpolation(); //Refresh interpolation matrix
+	interp[0] = -alpha * (alpha + 1.0) / ((alpha + 2.0) * (alpha + 3.0));
+	interp[1] = 2.0 * alpha / (alpha + 2.0);
+	interp[2] = 2.0 / (alpha + 2.0);
+	interp[3] = -2.0 * alpha / ((alpha + 3.0) * (alpha + 2.0));
 
 	for (int i = 0; i < main.size(); i++)
 	{
@@ -265,4 +312,14 @@ void Tine::addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::
 
 		main[i].push_back(point);
 	}
+}
+
+void Tine::calculateInterpolation()
+{
+	Iterm = (alpha - 1) / (alpha + 1);
+	float itermSq = Iterm * Iterm;
+	J[0] = itermSq - 4 * Iterm + 6;
+	J[1] = Iterm - 4;
+	J[2] = -itermSq + 4 * Iterm + 1;
+	J[3] = -Iterm;
 }

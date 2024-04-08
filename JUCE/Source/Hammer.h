@@ -21,7 +21,7 @@ public:
     void prepareToPlay(double sampleRate, int tineNumber, const std::vector<float> contact, int N);
     void beginHammer(float velocity);
     void stopHammer();
-    float calculateForce(const float* tine_u);
+    float calculateForce(std::vector<float>::iterator tine_u);
     float getMass();
 private:
 

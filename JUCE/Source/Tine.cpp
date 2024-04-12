@@ -1,9 +1,9 @@
 /*
   ==============================================================================
 
-    Tine.cpp
-    Created: 8 Mar 2024 10:33:32am
-    Author:  Sonderbo
+	Tine.cpp
+	Created: 8 Mar 2024 10:33:32am
+	Author:  Sonderbo
 
   ==============================================================================
 */
@@ -12,32 +12,38 @@
 
 Tine::Tine()
 {
-	isActive = false;
 	isStopped = true;
+	isPrepared = false;
 }
 
-void Tine::prepareToPlay(double sampleRate, int tineNumber)
+void Tine::prepareToPlay(double sampleRate)
 {
-	L = TINE_LENGTHS[tineNumber];
 	k = 1 / (sampleRate * config::oversampling);
 	kSq = k * k;
 	this->sampleRate = sampleRate * config::oversampling;
 
 	h = sqrtf((4 * sigma_1 * k + sqrtf(pow((4 * sigma_1 * k), 2) + 16 * kappa * kappa * k * k)) / 2);
 
-	N = static_cast<int>(L / h);
-	N_frac = L / h;
-	alpha = N_frac - N;
-
-	M_u = ceil(0.5 * N);
-	M_w = floor(0.5 * N);
-
 	hSq = h * h;
 
 	mu = (kappa * k) / hSq;
 	muSq = mu * mu;
 
-	freq = 1.426f * (juce::MathConstants<float>::pi * K) / (16 * L * L) * sqrtf(E / rho);
+	isPrepared = true;
+}
+
+void Tine::prepareGrid(float freq)
+{
+	L = calculateLength(freq);
+
+	N = static_cast<int>(L / h);
+	N_frac = L / h;
+	alpha = N_frac - N;
+
+	calculateInterpolation();
+
+	M_u = ceil(0.5 * N);
+	M_w = floor(0.5 * N);
 
 	uStates = std::vector<std::vector<float>>(3, std::vector<float>(M_u + 1, 0));
 	wStates = std::vector<std::vector<float>>(3, std::vector<float>(M_w + 1, 0));
@@ -57,45 +63,70 @@ void Tine::prepareToPlay(double sampleRate, int tineNumber)
 
 	h_contact.resize(M_u + 1, 0.0f);
 
-	h_contact[static_cast<int>(0.5 * M_u)] = 1;
-	
-	hammer.prepareToPlay(sampleRate, tineNumber, h_contact, M_u);
-	h_ratio = hammer.getMass() / (rho * A * L);
-	
-	inactiveTimer = config::tine::inactiveTimer * sampleRate / config::oversampling;
+	h_contact[static_cast<int>(0.33 * M_u)] = 1;
 
-	//TODO add Iterm and J calculation
-	calculateInterpolation();
+	hammer.prepareToPlay(sampleRate, h_contact, M_u);
+	h_ratio = hammer.getMass() / (rho * A * L);
 }
 
-void Tine::startNote(float velocity)
+void Tine::noteStarted()
 {
+	jassert(currentlyPlayingNote.isValid());
+	jassert(currentlyPlayingNote.keyState == juce::MPENote::keyDown
+		|| currentlyPlayingNote.keyState == juce::MPENote::keyDownAndSustained);
+	jassert(isPrepared);
+
+	float freq = currentlyPlayingNote.getFrequencyInHertz();
+	float velocity = currentlyPlayingNote.noteOnVelocity.asUnsignedFloat() * config::mpe::maxInputVelocity;
+
+	prepareGrid(freq);
+
 	hammer.beginHammer(velocity);
-	isActive = true;
-	inactiveTimerIterator = inactiveTimer; //Inactive timer in samples
+
 	isStopped = false;
 }
 
-void Tine::stopNote()
+void Tine::noteStopped(bool allowTailOff)
 {
 	isStopped = true;
 }
 
+void Tine::notePressureChanged()
+{
+
+}
+void Tine::noteTimbreChanged()
+{
+
+}
+void Tine::noteKeyStateChanged()
+{
+
+}
+
+void Tine::notePitchbendChanged()
+{
+	//float scalar = currentlyPlayingNote.pitchbend.asSignedFloat();
+	float baseFreq = juce::MidiMessage::getMidiNoteInHertz(currentlyPlayingNote.initialNote);
+	float freq = currentlyPlayingNote.getFrequencyInHertz();
+
+
+	//float freq_new = freq * powf(2, scalar * 2 / 12);
+	float L_new = calculateLength(freq);
+
+	int Nprev = N;
+
+	N = static_cast<int>(L_new / h);
+
+	N_frac = L_new / h;
+	alpha = N_frac - N;
+	calculateInterpolation();
+
+	updateGridpoints(Nprev);
+}
+
 float Tine::processSample()
 {
-	if (isActive == false)
-		return 0.0f;
-	if (isStopped == true)
-	{
-		inactiveTimerIterator = inactiveTimerIterator - 1;
-		if (inactiveTimerIterator <= 0)
-		{
-			isActive = false;
-			resetScheme();
-			return 0.0f;
-		}
-	}
-
 	float sample;
 
 	for (size_t i = 0; i < config::oversampling; i++)
@@ -105,27 +136,22 @@ float Tine::processSample()
 
 	sample = w[1][0]; //Read output at tip
 
-	float gain = 1.0f;
+	//TODO pickup filtering goes here...
 
-	if (isStopped == true)
-		gain = (1.0f / inactiveTimer) * inactiveTimerIterator;
-
-	return sample * gain;
+	return limit(sample * 100.0f);
 }
 
-void Tine::setLength(float scalar)
+void Tine::renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
 {
-	float freq_new = freq * powf(2, scalar * 2 / 12);
-	float L_new = 1.426f * sqrtf(((juce::MathConstants<float>::pi * (r / 2.0f) * K) / freq_new) / 16.0f);
+	while (--numSamples >= 0)
+	{
+		auto currentSample = processSample();
 
-	int Nprev = N;
+		for (auto i = outputBuffer.getNumChannels(); --i >= 0;)
+			outputBuffer.addSample(i, startSample, currentSample);
 
-	N = static_cast<int>(L_new / h);
-
-	N_frac = L_new / h;
-	alpha = N_frac - N;
-
-	updateGridpoints(Nprev);
+		++startSample;
+	}
 }
 
 void Tine::calculateScheme()
@@ -133,27 +159,15 @@ void Tine::calculateScheme()
 	float force = hammer.calculateForce(u[1]);
 	//TODO precalculate coefficients for update equations
 	//Update loop - excluding outer and inner boundaries
-	for (int l = 2; l <= M_u - 2; l++)
+	for (int l = 2; l <= M_w - 2; l++)
 	{
 		u[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][l]
 			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (u[1][l + 1] + u[1][l - 1])
-			- muSq * (u[1][l + 2] + u[1][l - 2]) 
+			- muSq * (u[1][l + 2] + u[1][l - 2])
 			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * u[0][l]
 			- ((2 * sigma_1 * k) / hSq) * (u[0][l + 1] + u[0][l - 1]))
 			+ (h_ratio * h_contact[l] * force * kSq)
 			/ (1 + sigma_0 * k);
-
-		w[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][l]
-			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (w[1][l + 1] + w[1][l - 1])
-			- muSq * (w[1][l + 2] + w[1][l - 2]) 
-			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][l]
-			- ((2 * sigma_1 * k) / hSq) * (w[0][l + 1] + w[0][l - 1]))
-			/ (1 + sigma_0 * k);
-	}
-	
-	if (M_w > M_u) //In case of uneven grid lengths - W will always be greater
-	{
-		int l = M_w - 2;
 
 		w[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][l]
 			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (w[1][l + 1] + w[1][l - 1])
@@ -163,49 +177,62 @@ void Tine::calculateScheme()
 			/ (1 + sigma_0 * k);
 	}
 
-	//u inner boundary
-	u[2][M_u - 1] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][M_u - 1]
+	if (M_u > M_w) //In case of uneven grid lengths - U will always be greater
+	{
+		int l = M_u - 2;
+
+		u[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][l]
+			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (u[1][l + 1] + u[1][l - 1])
+			- muSq * (u[1][l + 2] + u[1][l - 2])
+			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * u[0][l]
+			- ((2 * sigma_1 * k) / hSq) * (u[0][l + 1] + u[0][l - 1]))
+			/ (1 + sigma_0 * k);
+	}
+
+	//Inner boundaries
+	u[2][M_u - 1] = ((2 - 6 * muSq - (4 * sigma_1 * k) / hSq) * u[1][M_u - 1]
 		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u]
 		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u - 2]
+		- muSq * u[1][M_u - 3]
 		- muSq * w[1][M_w]
 		- J[3] * muSq * w[1][M_w - 1]
 		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * u[0][M_u - 1]
-		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 2] + u[0][M_u]))
-		/ (1 + sigma_0 * k);
+		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 2] + u[0][M_u])
+		) / (1 + sigma_0 * k);
 
-	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * (2 * sigma_1 * k) / hSq) * u[1][M_u]
-		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u - 1]
+	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * u[1][M_u]
+		+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * u[1][M_u - 1]
 		- muSq * u[1][M_u - 2]
-		- (J[1] * muSq - (2 * sigma_1 * k) / hSq) * w[1][M_w]
-		- (J[2] * muSq + Iterm) * w[1][M_w - 1]
+		+ (((2 * sigma_1 * k) / hSq) - J[1] * muSq) * w[1][M_w]
+		+ (J[3] * ((2 * sigma_1 * k) / hSq) - J[2] * muSq) * w[1][M_w - 1]
 		- (J[3] * muSq) * w[1][M_w - 2]
 		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * u[0][M_u]
 		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 1] + w[0][M_w])
-		- (-Iterm * ((2 * sigma_1 * k) / hSq)) * w[0][M_w - 1])
-		/ (1 + sigma_0 * k);
+		- (J[3] * ((2 * sigma_1 * k) / hSq)) * w[0][M_w - 1]
+		) / (1 + sigma_0 * k);
 
-	//w inner boundary
-	w[2][M_w - 1] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][M_w - 1]
+	w[2][M_w - 1] = ((2 - 6 * muSq - (4 * sigma_1 * k) / hSq) * w[1][M_w - 1]
 		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w]
 		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w - 2]
+		- muSq * w[1][M_w - 3]
 		- muSq * u[1][M_u]
 		- J[3] * muSq * u[1][M_u - 1]
 		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * w[0][M_w - 1]
-		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 2] + w[0][M_w]))
-		/ (1 + sigma_0 * k);
+		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 2] + w[0][M_w])
+		) / (1 + sigma_0 * k);
 
-	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * (2 * sigma_1 * k) / hSq) * w[1][M_w]
-		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w - 1]
+	w[2][M_w] = ((2 - J[0] * muSq + (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * w[1][M_w]
+		+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * w[1][M_w - 1]
 		- muSq * w[1][M_w - 2]
-		- (J[1] * muSq - (2 * sigma_1 * k) / hSq) * u[1][M_u]
-		- (J[2] * muSq + Iterm) * u[1][M_u - 1]
+		+ (((2 * sigma_1 * k) / hSq) - J[1] * muSq) * u[1][M_u]
+		+ (J[3] * ((2 * sigma_1 * k) / hSq) - J[2] * muSq) * u[1][M_u - 1]
 		- (J[3] * muSq) * u[1][M_u - 2]
 		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * w[0][M_w]
 		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 1] + u[0][M_u])
-		- (-Iterm * ((2 * sigma_1 * k) / hSq)) * u[0][M_u - 1])
-		/ (1 + sigma_0 * k);
+		- (J[3] * ((2 * sigma_1 * k) / hSq)) * u[0][M_u - 1]
+		) / (1 + sigma_0 * k);
 
-	//Free boundary update
+	//Free Boundary
 	w[2][1] = ((2 - 5 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][1]
 		+ ((2 * sigma_1 * k) / (hSq)+2 * muSq) * w[1][0]
 		+ (4 * muSq + (2 * sigma_1 * k) / (hSq)) * w[1][2]
@@ -255,8 +282,10 @@ void Tine::resetScheme()
 
 void Tine::updateGridpoints(int Nprev)
 {
-	if (abs(Nprev - N) > 1)
-		throw std::invalid_argument("Addition of multiple new grid points is invalid");
+	jassert(abs(N - Nprev) <= 1);
+
+	if (Nprev == N) //Same amount of grid points
+		return;
 
 	if (Nprev < N) //Addition
 	{
@@ -286,6 +315,7 @@ void Tine::updateGridpoints(int Nprev)
 
 void Tine::removeGridpoint(std::vector<std::vector<float>>& grid)
 {
+	//This will run for the 3 state vectors of the given grid
 	for (int i = 0; i < grid.size(); i++)
 	{
 		grid[i].pop_back();
@@ -295,16 +325,16 @@ void Tine::removeGridpoint(std::vector<std::vector<float>>& grid)
 
 void Tine::addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::vector<float>>& sec)
 {
-	interp[0] = -alpha * (alpha + 1.0) / ((alpha + 2.0) * (alpha + 3.0));
-	interp[1] = 2.0 * alpha / (alpha + 2.0);
-	interp[2] = 2.0 / (alpha + 2.0);
-	interp[3] = -2.0 * alpha / ((alpha + 3.0) * (alpha + 2.0));
+	interp[0] = -alpha * (alpha + 1.0f) / ((alpha + 2.0f) * (alpha + 3.0f));
+	interp[1] = 2.0f * alpha / (alpha + 2.0f);
+	interp[2] = 2.0f / (alpha + 2.0f);
+	interp[3] = -2.0f * alpha / ((alpha + 3.0f) * (alpha + 2.0f));
 
 	for (int i = 0; i < main.size(); i++)
 	{
 		int M = main[i].size() - 1;
 		int S = sec[i].size() - 1;
-		float v[4] = { main[i][M - 1], main[i][M], sec[i][S], sec[i][S - 1]}; //Build v vector
+		float v[4] = { main[i][M - 1], main[i][M], sec[i][S], sec[i][S - 1] }; //Build v vector
 
 		float point = 0.0f;
 		for (int j = 0; j < 4; j++)
@@ -316,10 +346,31 @@ void Tine::addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::
 
 void Tine::calculateInterpolation()
 {
-	Iterm = (alpha - 1) / (alpha + 1);
+	Iterm = (alpha - 1.0f) / (alpha + 1.0f);
 	float itermSq = Iterm * Iterm;
-	J[0] = itermSq - 4 * Iterm + 6;
-	J[1] = Iterm - 4;
-	J[2] = -itermSq + 4 * Iterm + 1;
+	J[0] = itermSq - 4.0f * Iterm + 6.0f;
+	J[1] = Iterm - 4.0f;
+	J[2] = -itermSq + 4.0f * Iterm + 1.0f;
 	J[3] = -Iterm;
+}
+
+float Tine::limit(float sample)
+{
+	if (sample > 1.0f)
+	{
+		DBG("Sample Exceeded 1.0");
+		return 1.0f;
+	}
+	else if (sample < -1.0f)
+	{
+		DBG("Sample Exceeded -1.0");
+		return -1.0f;
+	}
+	else
+		return sample;
+}
+
+float Tine::calculateLength(float freq)
+{
+	return sqrt(((1.426f * juce::MathConstants<float>::pi * K * kappa_1) / freq) / 8);
 }

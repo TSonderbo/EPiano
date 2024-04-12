@@ -12,16 +12,24 @@
 //==============================================================================
 EPianoAudioProcessor::EPianoAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       ), apvts(*this, nullptr, "Parameters", createParams())
+    : AudioProcessor(BusesProperties()
+#if ! JucePlugin_IsMidiEffect
+#if ! JucePlugin_IsSynth
+        .withInput("Input", juce::AudioChannelSet::stereo(), true)
+#endif
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)
+#endif
+    ), apvts(*this, nullptr, "Parameters", createParams())
 #endif
 {
+    for (int i = 0; i < config::mpe::numVoices; i++)
+    {
+        synth.addVoice(new Tine());
+    }
+
+    synth.setVoiceStealingEnabled(true);
+
+    synth.enableLegacyMode(24);
 }
 
 EPianoAudioProcessor::~EPianoAudioProcessor()
@@ -94,7 +102,15 @@ void EPianoAudioProcessor::changeProgramName (int index, const juce::String& new
 //==============================================================================
 void EPianoAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    ePianoManager.prepareToPlay(sampleRate);
+    synth.setCurrentPlaybackSampleRate(sampleRate);
+
+    for (int i = 0; i < synth.getNumVoices(); i++)
+    {
+        if (auto voice = dynamic_cast<Tine*>(synth.getVoice(i)))
+        {
+            voice->prepareToPlay(sampleRate);
+        }
+    }
 }
 
 void EPianoAudioProcessor::releaseResources()
@@ -152,13 +168,8 @@ void EPianoAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
-    
-    ePianoManager.renderNextBlock(buffer, midiMessages, 0, numSamples);
 
-	for (int channel = 0; channel < totalNumInputChannels; ++channel)
-	{
-		
-	}
+    synth.renderNextBlock(buffer, midiMessages, 0, numSamples);
     
     scopeDataCollector.process(buffer.getReadPointer(0), (size_t)numSamples);
 }

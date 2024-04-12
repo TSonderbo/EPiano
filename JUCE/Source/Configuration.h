@@ -27,8 +27,10 @@ namespace config
 	//MPE-MIDI
 	namespace mpe
 	{
+		unsigned const int numVoices = 3;
 		unsigned const int minNote = 28;
 		unsigned const int maxNote = 99;
+		const float maxInputVelocity = 4.0f;
 	}
 
 	//Configuration

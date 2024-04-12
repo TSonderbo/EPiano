@@ -28,9 +28,6 @@
       <GROUP id="{C66336A3-CAA0-18AF-53A9-9EAC3D96F123}" name="Synth">
         <FILE id="LfPs00" name="Damper.h" compile="0" resource="0" file="Source/Damper.h"/>
         <FILE id="tQkpac" name="Damper.cpp" compile="1" resource="0" file="Source/Damper.cpp"/>
-        <FILE id="nUWi2L" name="EPianoManager.h" compile="0" resource="0" file="Source/EPianoManager.h"/>
-        <FILE id="KQLkLd" name="EPianoManager.cpp" compile="1" resource="0"
-              file="Source/EPianoManager.cpp"/>
         <FILE id="ndCjGb" name="Hammer.h" compile="0" resource="0" file="Source/Hammer.h"/>
         <FILE id="AheOqq" name="Hammer.cpp" compile="1" resource="0" file="Source/Hammer.cpp"/>
         <FILE id="N0BaqW" name="Tine.h" compile="0" resource="0" file="Source/Tine.h"/>

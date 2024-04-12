@@ -15,16 +15,23 @@
 #include "TineLengths.h"
 #include "Configuration.h"
 
-class Tine
+class Tine : public juce::MPESynthesiserVoice
 {
 public:
 
 	Tine();
-	//==============================================================================
-	void prepareToPlay(double sampleRate, int tineNumber);
-	void startNote(float velocity);
-	void stopNote();
-	void setLength(float scalar);
+	//Overrides ====================================================================
+	void noteStarted() override;
+	void noteStopped(bool allowTailOff) override;
+	void notePitchbendChanged() override;
+	void notePressureChanged() override;
+	void noteTimbreChanged() override;
+	void noteKeyStateChanged() override;
+	void renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
+		int startSample,
+		int numSamples) override;
+	//===============================================================================
+	void prepareToPlay(double sampleRate);
 	float processSample();
 	bool getIsActive();
 
@@ -35,19 +42,17 @@ private:
 	float k; //Sampling period
 	float kSq; //Sampling period squared
 	int outLoc;
-	int inactiveTimer;
-	int inactiveTimerIterator;
+	bool isPrepared;
 
 	//Material properties
 	float L; //Length - From Tine Length Config
 	float rho = 7850.0f; //Material density
-	float r = 1.524f * pow(10, -3); //Radius
-	float A = juce::MathConstants<float>::pi * pow(r, 2); //Cross-sectional area
-	float E = 2.0f * pow(10, 11); //Young's modulus
-	float I = juce::MathConstants<float>::pi * pow(r, 4) / 4.0f; //Inertia
-	float K = sqrtf(E / rho);
-	float freq;
-
+	float r = 1.524f * powf(10, -3); //Radius
+	float A = juce::MathConstants<float>::pi * powf(r, 2); //Cross-sectional area
+	float E = 2.0f * powf(10, 11); //Young's modulus
+	float I = juce::MathConstants<float>::pi * powf(r, 4) / 4.0f; //Inertia
+	float K = r/2.0f;
+	float kappa_1 = sqrtf(E / rho);
 
 	//Coefficients
 	float kappa = sqrtf((E*I)/(rho*A)); //Stiffness coefficient
@@ -55,7 +60,7 @@ private:
 	float muSq; //Coefficient
 
 	//Damping
-	float sigma_0 = 0.05f; //Freq. dependent damping
+	float sigma_0 = 0.1f; //Freq. dependent damping
 	float sigma_1 = 0.0001f; //Freq. independent damping
 
 	//Grid
@@ -80,9 +85,7 @@ private:
 	int M_u;
 	int M_w;
 
-
 	//Activity states
-	bool isActive;
 	bool isStopped;
 
 	//Excitation
@@ -98,5 +101,8 @@ private:
 	void addGridpoint(std::vector<std::vector<float>>& main, std::vector<std::vector<float>>& sec);
 	void removeGridpoint(std::vector<std::vector<float>>& grid);
 	void calculateInterpolation();
+	void prepareGrid(float freq);
+	float calculateLength(float freq);
+	float limit(float sample);
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

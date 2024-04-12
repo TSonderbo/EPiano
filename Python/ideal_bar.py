@@ -4,7 +4,6 @@ import math
 import matplotlib.pyplot as plt
 from numba import njit
 from scipy.fftpack import fft, fftfreq
-import sounddevice as sd
 
 @njit
 def sim():
@@ -60,7 +59,7 @@ def sim():
     f_uPrev = f_u - k*f_vIn #Set initial velocity
     f_uNext = 0
     f_ratio = f_m / (rho*A*L)
-    f_contact = math.floor(N*0.3)
+    f_contact = math.floor(N*0.25)
     x = 0 #Compression
     xPrev = 0 #Previous Compression
 
@@ -114,7 +113,8 @@ def sim():
 
             uNext[l] = ((2-6*muSq-((4*sigma_1*k)/hSq))*u[l] \
                 + (4*muSq + ((2*sigma_1*k)/hSq))*(u[l+1] + u[l-1]) \
-                - muSq*(u[l+2] + u[l-2]) + (-1+sigma_0*k+((4*sigma_1*k)/hSq))*uPrev[l] \
+                - muSq*(u[l+2] + u[l-2]) \
+                + (-1+sigma_0*k+((4*sigma_1*k)/hSq))*uPrev[l] \
                 - ((2*sigma_1*k)/hSq) * (uPrev[l+1] + uPrev[l-1])) \
                 + (f_ratio * F[l] * k**2 * 10) \
                 /(1+sigma_0*k) 

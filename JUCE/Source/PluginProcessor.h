@@ -9,11 +9,10 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "EPianoManager.h"
 #include "ScopeDataCollector.h"
 #include "AudioBufferQueue.h"
 #include "Configuration.h"
-
+#include "Tine.h"
 //==============================================================================
 /**
 */
@@ -66,7 +65,7 @@ public:
 
 private:
 
-    EPianoManager ePianoManager;
+    juce::MPESynthesiser synth;
     AudioBufferQueue audioBufferQueue;
     ScopeDataCollector scopeDataCollector{ audioBufferQueue };
 

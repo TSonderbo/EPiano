@@ -13,7 +13,7 @@ def sim():
 
     lenSound = math.floor(fs * 0.5) #length of sound in samples
 
-    L = 0.1564
+    L = 0.04
     rho = 7850 #material Density
     r = 1.524 * 10 **-3
     A = math.pi * r**2 #cross-sectional area
@@ -160,37 +160,59 @@ def sim():
         #     - ((2 * sigma_1 * k) / hSq) * (uPrev[M_u - 1] + (Iterm - 2) * uPrev[M_u] + wPrev[M_w] + J[3] * wPrev[M_w - 1]) \
         #     ) / (1 + sigma_0 * k)
         
-        uNext[M_u] = ((2 - J[0] * muSq + (Iterm - 2)*((2*sigma_1*k)/hSq)) * u[M_u]
-                      + (4*muSq + ((2*sigma_1*k)/hSq)) * u[M_u - 1]
-                      - muSq * u[M_u - 2]
-                      + (((2*sigma_1*k)/hSq) - J[1]*muSq)*w[M_w]
-                      + (J[3]*((2*sigma_1*k)/hSq) - J[2]*muSq)*w[M_w - 1]
-                      - (J[3]*muSq)*w[M_w - 2]
-                      + (-1 + sigma_0*k - (Iterm - 2)*((2*sigma_1*k)/hSq))*uPrev[M_u]
-                      - ((2*sigma_1*k)/hSq)*(uPrev[M_u - 1] + wPrev[M_w])
-                      - (J[3] * ((2*sigma_1*k)/hSq)) * wPrev[M_w - 1]
+        uNext[M_u] = ((2 - J[0] * muSq + (Iterm - 2)*((2*sigma_1*k)/hSq)) * u[M_u] \
+                      + (4*muSq + ((2*sigma_1*k)/hSq)) * u[M_u - 1] \
+                      - muSq * u[M_u - 2] \
+                      + (((2*sigma_1*k)/hSq) - J[1]*muSq)*w[M_w] \
+                      + (J[3]*((2*sigma_1*k)/hSq) - J[2]*muSq)*w[M_w - 1] \
+                      - (J[3]*muSq)*w[M_w - 2] \
+                      + (-1 + sigma_0*k - (Iterm - 2)*((2*sigma_1*k)/hSq))*uPrev[M_u] \
+                      - ((2*sigma_1*k)/hSq)*(uPrev[M_u - 1] + wPrev[M_w]) \
+                      - (J[3] * ((2*sigma_1*k)/hSq)) * wPrev[M_w - 1]\
                       ) / (1+sigma_0*k) 
         
 
-        wNext[M_w - 1] = (2 * w[M_w - 1] - muSq * (w[M_w - 3] - 4 * w[M_w - 2] + 6 * w[M_w - 1] + J[1] * w[M_w] + u[M_u] + J[3] * u[M_u - 1]) \
-            + ((2 * sigma_1 * k) / hSq) * (w[M_w - 2] - 2 * w[M_w - 1] + w[M_w]) \
-            - wPrev[M_w - 1] * (1 - sigma_0 * k) \
-            - ((2 * sigma_1 * k) / hSq) * (wPrev[M_w - 2] - 2 * wPrev[M_w - 1] + wPrev[M_w]) \
-            ) / (1 + sigma_0 * k)
+        # wNext[M_w - 1] = (2 * w[M_w - 1] - muSq * (w[M_w - 3] - 4 * w[M_w - 2] + 6 * w[M_w - 1] + J[1] * w[M_w] + u[M_u] + J[3] * u[M_u - 1]) \
+        #     + ((2 * sigma_1 * k) / hSq) * (w[M_w - 2] - 2 * w[M_w - 1] + w[M_w]) \
+        #     - wPrev[M_w - 1] * (1 - sigma_0 * k) \
+        #     - ((2 * sigma_1 * k) / hSq) * (wPrev[M_w - 2] - 2 * wPrev[M_w - 1] + wPrev[M_w]) \
+        #     ) / (1 + sigma_0 * k)
+        
+        wNext[M_w - 1] = ((2 - 6*muSq - (4*sigma_1*k)/hSq)*w[M_w - 1] \
+                          + (-J[1]*muSq + (2*sigma_1*k)/hSq) * w[M_w] \
+                          + (4*muSq + (2*sigma_1*k)/hSq) * w[M_w - 2] \
+                          - muSq*w[M_w - 3] \
+                          - muSq*u[M_u] \
+                          - J[3]*muSq*u[M_u - 1] \
+                          + (-1+sigma_0*k + (4*sigma_1*k)/hSq) * wPrev[M_w - 1] \
+                          - ((2*sigma_1*k)/hSq) * (wPrev[M_w - 2] + wPrev[M_w]) \
+                          ) / (1+sigma_0*k) 
 
-        wNext[M_w] = (2 * w[M_w] - muSq * (w[M_w - 2] - 4 * w[M_w - 1] + J[0] * w[M_w] + J[1] * u[M_u] + J[2] * u[M_u - 1] + J[3] * u[M_u - 2]) \
-            + ((2 * sigma_1 * k) / hSq) * (w[M_w - 1] + (Iterm - 2) * w[M_w] + u[M_u] + J[3] * u[M_u - 1]) \
-            - wPrev[M_w] * (1 - sigma_0 * k) \
-            - ((2 * sigma_1 * k) / hSq) * (wPrev[M_w - 1] + (Iterm - 2) * wPrev[M_w] + uPrev[M_u] + J[3] * uPrev[M_u - 1]) \
-            ) / (1 + sigma_0 * k)
+        # wNext[M_w] = (2 * w[M_w] - muSq * (w[M_w - 2] - 4 * w[M_w - 1] + J[0] * w[M_w] + J[1] * u[M_u] + J[2] * u[M_u - 1] + J[3] * u[M_u - 2]) \
+        #     + ((2 * sigma_1 * k) / hSq) * (w[M_w - 1] + (Iterm - 2) * w[M_w] + u[M_u] + J[3] * u[M_u - 1]) \
+        #     - wPrev[M_w] * (1 - sigma_0 * k) \
+        #     - ((2 * sigma_1 * k) / hSq) * (wPrev[M_w - 1] + (Iterm - 2) * wPrev[M_w] + uPrev[M_u] + J[3] * uPrev[M_u - 1]) \
+        #     ) / (1 + sigma_0 * k)
+        
+        wNext[M_w] = ((2 - J[0] * muSq + (Iterm - 2)*((2*sigma_1*k)/hSq)) * w[M_w] \
+                      + (4*muSq + ((2*sigma_1*k)/hSq)) * w[M_w - 1] \
+                      - muSq * w[M_w - 2] \
+                      + (((2*sigma_1*k)/hSq) - J[1]*muSq)*u[M_u] \
+                      + (J[3]*((2*sigma_1*k)/hSq) - J[2]*muSq)*u[M_u - 1] \
+                      - (J[3]*muSq)*u[M_u - 2] \
+                      + (-1 + sigma_0*k - (Iterm - 2)*((2*sigma_1*k)/hSq))*wPrev[M_w] \
+                      - ((2*sigma_1*k)/hSq)*(wPrev[M_w - 1] + uPrev[M_u]) \
+                      - (J[3] * ((2*sigma_1*k)/hSq)) * uPrev[M_u - 1]\
+                      ) / (1+sigma_0*k) 
         
         #Update for free boundary based on matrix implementation
         wNext[1] = ((2 - 5*muSq - ((4 * sigma_1 * k) / hSq)) * w[1] \
         + ((2*sigma_1*k)/(hSq)+2*muSq) * w[0] \
         + (4*muSq + (2*sigma_1*k)/(hSq)) * w[2] \
-        - muSq*w[3]
-        + (-1 + sigma_0 * k + (4*sigma_1*k)/hSq)*wPrev[1]
-        - ((2*sigma_1*k)/(hSq))*(wPrev[2] + wPrev[0]))
+        - muSq*w[3] \
+        + (-1 + sigma_0 * k + (4*sigma_1*k)/hSq)*wPrev[1] \
+        - ((2*sigma_1*k)/(hSq))*(wPrev[2] + wPrev[0]))\
+        /(1+sigma_0*k) 
         
         wNext[0] = ((2 - 2*muSq - ((4 * sigma_1 * k) / hSq)) * w[0] \
         + (4 * muSq + ((4 * sigma_1 * k) / hSq)) * w[1] \

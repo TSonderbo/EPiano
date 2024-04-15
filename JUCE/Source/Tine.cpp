@@ -30,6 +30,18 @@ void Tine::prepareToPlay(double sampleRate)
 	muSq = mu * mu;
 
 	isPrepared = true;
+
+	//Calculate Coefficients
+	S = (2 * sigma_1 * k) / hSq;
+
+	C_0 = (2 - 6 * muSq - (4 * sigma_1 * k) / hSq);
+	C_1 = 4 * muSq + S;
+	B_0 = (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq));
+	D = 1 / (1 + sigma_0 * k);
+
+	F_0 = (2 - 5 * muSq - ((4 * sigma_1 * k) / hSq));
+	F_1 = ((2 * sigma_1 * k) / hSq + 2 * muSq);
+	F_2 = (2 - 2 * muSq - ((4 * sigma_1 * k) / hSq));
 }
 
 void Tine::prepareGrid(float freq)
@@ -63,10 +75,18 @@ void Tine::prepareGrid(float freq)
 
 	h_contact.resize(M_u + 1, 0.0f);
 
-	h_contact[static_cast<int>(0.33 * M_u)] = 1;
+	int contact_point = static_cast<int>(0.5 * M_u);
+
+	if (contact_point < 4)
+		contact_point = 4;
+
+	h_contact[contact_point] = 1;
 
 	hammer.prepareToPlay(sampleRate, h_contact, M_u);
 	h_ratio = hammer.getMass() / (rho * A * L);
+
+	//Pre-calculate hammer contact
+	h_contact[contact_point] = 1 * kSq * h_ratio; 
 }
 
 void Tine::noteStarted()
@@ -75,6 +95,9 @@ void Tine::noteStarted()
 	jassert(currentlyPlayingNote.keyState == juce::MPENote::keyDown
 		|| currentlyPlayingNote.keyState == juce::MPENote::keyDownAndSustained);
 	jassert(isPrepared);
+
+	if (isNoteValid() == false)
+		return;
 
 	float freq = currentlyPlayingNote.getFrequencyInHertz();
 	float velocity = currentlyPlayingNote.noteOnVelocity.asUnsignedFloat() * config::mpe::maxInputVelocity;
@@ -106,6 +129,9 @@ void Tine::noteKeyStateChanged()
 
 void Tine::notePitchbendChanged()
 {
+	if (isNoteValid() == false)
+		return;
+
 	//float scalar = currentlyPlayingNote.pitchbend.asSignedFloat();
 	float baseFreq = juce::MidiMessage::getMidiNoteInHertz(currentlyPlayingNote.initialNote);
 	float freq = currentlyPlayingNote.getFrequencyInHertz();
@@ -127,6 +153,9 @@ void Tine::notePitchbendChanged()
 
 float Tine::processSample()
 {
+	if (isNoteValid() == false)
+		return 0;
+
 	float sample;
 
 	for (size_t i = 0; i < config::oversampling; i++)
@@ -161,92 +190,93 @@ void Tine::calculateScheme()
 	//Update loop - excluding outer and inner boundaries
 	for (int l = 2; l <= M_w - 2; l++)
 	{
-		u[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][l]
-			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (u[1][l + 1] + u[1][l - 1])
+		u[2][l] = (C_0 * u[1][l]
+			+ C_1 * (u[1][l + 1] + u[1][l - 1])
 			- muSq * (u[1][l + 2] + u[1][l - 2])
-			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * u[0][l]
-			- ((2 * sigma_1 * k) / hSq) * (u[0][l + 1] + u[0][l - 1]))
-			+ (h_ratio * h_contact[l] * force * kSq)
-			/ (1 + sigma_0 * k);
+			+ B_0 * u[0][l]
+			- S * (u[0][l + 1] + u[0][l - 1])
+			+ (h_contact[l] * force))
+			* D;
 
-		w[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][l]
-			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (w[1][l + 1] + w[1][l - 1])
+		w[2][l] = (C_0 * w[1][l]
+			+ C_1 * (w[1][l + 1] + w[1][l - 1])
 			- muSq * (w[1][l + 2] + w[1][l - 2])
-			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][l]
-			- ((2 * sigma_1 * k) / hSq) * (w[0][l + 1] + w[0][l - 1]))
-			/ (1 + sigma_0 * k);
+			+ B_0 * w[0][l]
+			- S * (w[0][l + 1] + w[0][l - 1]))
+			* D;
 	}
 
 	if (M_u > M_w) //In case of uneven grid lengths - U will always be greater
 	{
 		int l = M_u - 2;
 
-		u[2][l] = ((2 - 6 * muSq - ((4 * sigma_1 * k) / hSq)) * u[1][l]
-			+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * (u[1][l + 1] + u[1][l - 1])
+		u[2][l] = (C_0 * u[1][l]
+			+ C_1 * (u[1][l + 1] + u[1][l - 1])
 			- muSq * (u[1][l + 2] + u[1][l - 2])
-			+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * u[0][l]
-			- ((2 * sigma_1 * k) / hSq) * (u[0][l + 1] + u[0][l - 1]))
-			/ (1 + sigma_0 * k);
+			+ B_0 * u[0][l]
+			- S * (u[0][l + 1] + u[0][l - 1])
+			+ (h_ratio * h_contact[l] * force * kSq))
+			* D;
 	}
 
 	//Inner boundaries
-	u[2][M_u - 1] = ((2 - 6 * muSq - (4 * sigma_1 * k) / hSq) * u[1][M_u - 1]
-		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u]
-		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * u[1][M_u - 2]
+	u[2][M_u - 1] = (C_0 * u[1][M_u - 1]
+		+ E_1 * u[1][M_u]
+		+ C_1 * u[1][M_u - 2]
 		- muSq * u[1][M_u - 3]
 		- muSq * w[1][M_w]
-		- J[3] * muSq * w[1][M_w - 1]
-		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * u[0][M_u - 1]
-		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 2] + u[0][M_u])
-		) / (1 + sigma_0 * k);
+		- A_3 * w[1][M_w - 1]
+		+ B_0 * u[0][M_u - 1]
+		- S * (u[0][M_u - 2] + u[0][M_u]))
+		* D;
 
-	u[2][M_u] = ((2 - J[0] * muSq + (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * u[1][M_u]
-		+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * u[1][M_u - 1]
+	u[2][M_u] = (A_0 * u[1][M_u]
+		+ C_1 * u[1][M_u - 1]
 		- muSq * u[1][M_u - 2]
-		+ (((2 * sigma_1 * k) / hSq) - J[1] * muSq) * w[1][M_w]
-		+ (J[3] * ((2 * sigma_1 * k) / hSq) - J[2] * muSq) * w[1][M_w - 1]
-		- (J[3] * muSq) * w[1][M_w - 2]
-		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * u[0][M_u]
-		- ((2 * sigma_1 * k) / hSq) * (u[0][M_u - 1] + w[0][M_w])
-		- (J[3] * ((2 * sigma_1 * k) / hSq)) * w[0][M_w - 1]
-		) / (1 + sigma_0 * k);
+		+ A_1 * w[1][M_w]
+		+ A_2 * w[1][M_w - 1]
+		- A_3 * w[1][M_w - 2]
+		+ A_4 * u[0][M_u]
+		- S * (u[0][M_u - 1] + w[0][M_w])
+		- A_5 * w[0][M_w - 1])
+		* D;
 
-	w[2][M_w - 1] = ((2 - 6 * muSq - (4 * sigma_1 * k) / hSq) * w[1][M_w - 1]
-		+ (-J[1] * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w]
-		+ (4 * muSq + (2 * sigma_1 * k) / hSq) * w[1][M_w - 2]
+	w[2][M_w - 1] = (C_0 * w[1][M_w - 1]
+		+ E_1 * w[1][M_w]
+		+ C_1 * w[1][M_w - 2]
 		- muSq * w[1][M_w - 3]
 		- muSq * u[1][M_u]
-		- J[3] * muSq * u[1][M_u - 1]
-		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * w[0][M_w - 1]
-		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 2] + w[0][M_w])
-		) / (1 + sigma_0 * k);
+		- A_3 * u[1][M_u - 1]
+		+ B_0 * w[0][M_w - 1]
+		- S * (w[0][M_w - 2] + w[0][M_w]))
+		* D;
 
-	w[2][M_w] = ((2 - J[0] * muSq + (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * w[1][M_w]
-		+ (4 * muSq + ((2 * sigma_1 * k) / hSq)) * w[1][M_w - 1]
+	w[2][M_w] = (A_0 * w[1][M_w]
+		+ C_1 * w[1][M_w - 1]
 		- muSq * w[1][M_w - 2]
-		+ (((2 * sigma_1 * k) / hSq) - J[1] * muSq) * u[1][M_u]
-		+ (J[3] * ((2 * sigma_1 * k) / hSq) - J[2] * muSq) * u[1][M_u - 1]
-		- (J[3] * muSq) * u[1][M_u - 2]
-		+ (-1 + sigma_0 * k - (Iterm - 2) * ((2 * sigma_1 * k) / hSq)) * w[0][M_w]
-		- ((2 * sigma_1 * k) / hSq) * (w[0][M_w - 1] + u[0][M_u])
-		- (J[3] * ((2 * sigma_1 * k) / hSq)) * u[0][M_u - 1]
-		) / (1 + sigma_0 * k);
+		+ A_1 * u[1][M_u]
+		+ A_2 * u[1][M_u - 1]
+		- A_3 * u[1][M_u - 2]
+		+ A_4 * w[0][M_w]
+		- S * (w[0][M_w - 1] + u[0][M_u])
+		- A_5 * u[0][M_u - 1])
+		* D;
 
 	//Free Boundary
-	w[2][1] = ((2 - 5 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][1]
-		+ ((2 * sigma_1 * k) / (hSq)+2 * muSq) * w[1][0]
-		+ (4 * muSq + (2 * sigma_1 * k) / (hSq)) * w[1][2]
+	w[2][1] = (F_0 * w[1][1]
+		+ F_1 * w[1][0]
+		+ C_1 * w[1][2]
 		- muSq * w[1][3]
-		+ (-1 + sigma_0 * k + (4 * sigma_1 * k) / hSq) * w[0][1]
-		- ((2 * sigma_1 * k) / (hSq)) * (w[0][2] + w[0][0]))
-		/ (1 + sigma_0 * k);
+		+ B_0 * w[0][1]
+		- S * (w[0][2] + w[0][0]))
+		* D;
 
-	w[2][0] = ((2 - 2 * muSq - ((4 * sigma_1 * k) / hSq)) * w[1][0]
-		+ (4 * muSq + ((4 * sigma_1 * k) / hSq)) * w[1][1]
+	w[2][0] = (F_2 * w[1][0]
+		+ C_1 * w[1][1]
 		- muSq * 2 * w[1][2]
-		+ (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq)) * w[0][0]
-		- ((2 * sigma_1 * k) / hSq) * (2 * w[0][1]))
-		/ (1 + sigma_0 * k);
+		+ B_0 * w[0][0]
+		- S * (2 * w[0][1]))
+		* D;
 
 	updateStates();
 }
@@ -264,11 +294,6 @@ void Tine::updateStates()
 	w[2] = wPrev;
 }
 
-bool Tine::getIsActive()
-{
-	return isActive;
-}
-
 void Tine::resetScheme()
 {
 	for (int i = 0; i < 3; i++)
@@ -283,6 +308,18 @@ void Tine::resetScheme()
 void Tine::updateGridpoints(int Nprev)
 {
 	jassert(abs(N - Nprev) <= 1);
+
+	if (abs(N - Nprev) > 1)
+	{
+		if (Nprev < N) //Addition
+		{
+			updateGridpoints(Nprev + 1);
+		}
+		else
+		{
+			updateGridpoints(Nprev - 1);
+		}
+	}
 
 	if (Nprev == N) //Same amount of grid points
 		return;
@@ -352,6 +389,15 @@ void Tine::calculateInterpolation()
 	J[1] = Iterm - 4.0f;
 	J[2] = -itermSq + 4.0f * Iterm + 1.0f;
 	J[3] = -Iterm;
+
+	//Recalculate Coefficients with interpolation values
+	E_1 = (-J[1] * muSq + (2 * sigma_1 * k) / hSq);
+	A_0 = (2 - J[0] * muSq + (Iterm - 2) * S);
+	A_1 = (S - J[1] * muSq);
+	A_2 = (J[3] * S - J[2] * muSq);
+	A_3 = (J[3] * muSq);
+	A_4 = (-1 + sigma_0 * k - (Iterm - 2) * S);
+	A_5 = (J[3] * S);
 }
 
 float Tine::limit(float sample)
@@ -373,4 +419,10 @@ float Tine::limit(float sample)
 float Tine::calculateLength(float freq)
 {
 	return sqrt(((1.426f * juce::MathConstants<float>::pi * K * kappa_1) / freq) / 8);
+}
+
+bool Tine::isNoteValid()
+{
+	auto note = getCurrentlyPlayingNote().initialNote;
+	return  note >= 21 && note <= 100;
 }

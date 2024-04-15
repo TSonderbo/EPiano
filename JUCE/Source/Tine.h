@@ -33,7 +33,6 @@ public:
 	//===============================================================================
 	void prepareToPlay(double sampleRate);
 	float processSample();
-	bool getIsActive();
 
 private:
 
@@ -60,8 +59,8 @@ private:
 	float muSq; //Coefficient
 
 	//Damping
-	float sigma_0 = 0.1f; //Freq. dependent damping
-	float sigma_1 = 0.0001f; //Freq. independent damping
+	float sigma_0 = 0.0005f; //Freq. independent damping
+	float sigma_1 = 0.001f; //Freq. dependent damping
 
 	//Grid
 	int N; //Number of grid intervals
@@ -93,6 +92,27 @@ private:
 	std::vector<float> h_contact; //Hammer contact distribution
 	float h_ratio; //Hammer-Tine mass ratio
 
+	//Material coefficients
+	float C_0;
+	float C_1;
+	float B_0;
+	float S;
+	float D;
+
+	float A_0;
+	float A_1;
+	float A_2;
+	float A_3;
+	float A_4;
+	float A_5;
+
+	float E_1;
+
+	float F_0;
+	float F_1;
+	float F_2;
+
+
 	//==============================================================================
 	void calculateScheme();
 	void updateStates();
@@ -104,5 +124,6 @@ private:
 	void prepareGrid(float freq);
 	float calculateLength(float freq);
 	float limit(float sample);
+	bool isNoteValid();
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

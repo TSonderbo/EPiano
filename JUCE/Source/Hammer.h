@@ -33,7 +33,7 @@ private:
     float mu = 0.5f;
     float m = 1.1f * pow(10, -2); //Hammer mass
 
-    const float uIn = -1.0f * pow(10, -4); //Initial hammer position
+    const float uIn = -1.0f * pow(10, -3); //Initial hammer position
     float u;
     float uPrev;
 

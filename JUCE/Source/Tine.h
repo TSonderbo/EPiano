@@ -14,6 +14,7 @@
 #include "Hammer.h"
 #include "TineLengths.h"
 #include "Configuration.h"
+#include "MagneticPickup.h"
 
 class Tine : public juce::MPESynthesiserVoice
 {
@@ -92,6 +93,17 @@ private:
 	std::vector<float> h_contact; //Hammer contact distribution
 	float h_ratio; //Hammer-Tine mass ratio
 
+	//Filter
+	Pickup pickup;
+
+	//Damper
+	float K1 = 100; //Spring coefficient
+	float K3 = 100000; //Spring coefficient
+	float R = 0.5; //Damping coefficient
+
+	int d_loc;
+
+
 	//Material coefficients
 	float C_0;
 	float C_1;
@@ -125,5 +137,6 @@ private:
 	float calculateLength(float freq);
 	float limit(float sample);
 	bool isNoteValid();
+	void applyDamping();
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

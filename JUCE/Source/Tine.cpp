@@ -18,30 +18,34 @@ Tine::Tine()
 
 void Tine::prepareToPlay(double sampleRate)
 {
-	k = 1 / (sampleRate * config::oversampling);
+
+	pickup.prepareToPlay(sampleRate);
+
+	k = 1.0f / (sampleRate * config::oversampling);
 	kSq = k * k;
 	this->sampleRate = sampleRate * config::oversampling;
 
-	h = sqrtf((4 * sigma_1 * k + sqrtf(pow((4 * sigma_1 * k), 2) + 16 * kappa * kappa * k * k)) / 2);
+	h = sqrtf((4.0f * sigma_1 * k + sqrtf(pow((4.0f * sigma_1 * k), 2.0f) + 16.0f * kappa * kappa * k * k)) / 2.0f);
 
 	hSq = h * h;
 
 	mu = (kappa * k) / hSq;
 	muSq = mu * mu;
 
+	//Calculate Coefficients
+	S = (2.0f * sigma_1 * k) / hSq;
+
+	C_0 = (2.0f - 6.0f * muSq - (4.0f * sigma_1 * k) / hSq);
+	C_1 = 4.0f * muSq + S;
+	B_0 = (-1.0f + sigma_0 * k + ((4.0f * sigma_1 * k) / hSq));
+	D = 1.0f / (1.0f + sigma_0 * k);
+
+	F_0 = (2.0f - 5.0f * muSq - ((4.0f * sigma_1 * k) / hSq));
+	F_1 = ((2.0f * sigma_1 * k) / hSq + 2.0f * muSq);
+	F_2 = (2.0f - 2.0f * muSq - ((4.0f * sigma_1 * k) / hSq));
+
 	isPrepared = true;
 
-	//Calculate Coefficients
-	S = (2 * sigma_1 * k) / hSq;
-
-	C_0 = (2 - 6 * muSq - (4 * sigma_1 * k) / hSq);
-	C_1 = 4 * muSq + S;
-	B_0 = (-1 + sigma_0 * k + ((4 * sigma_1 * k) / hSq));
-	D = 1 / (1 + sigma_0 * k);
-
-	F_0 = (2 - 5 * muSq - ((4 * sigma_1 * k) / hSq));
-	F_1 = ((2 * sigma_1 * k) / hSq + 2 * muSq);
-	F_2 = (2 - 2 * muSq - ((4 * sigma_1 * k) / hSq));
 }
 
 void Tine::prepareGrid(float freq)
@@ -74,8 +78,8 @@ void Tine::prepareGrid(float freq)
 	}
 
 	h_contact.resize(M_u + 1, 0.0f);
-
-	int contact_point = static_cast<int>(0.5 * M_u);
+	
+	int contact_point = static_cast<int>(0.33f * M_u);
 
 	if (contact_point < 4)
 		contact_point = 4;
@@ -87,6 +91,8 @@ void Tine::prepareGrid(float freq)
 
 	//Pre-calculate hammer contact
 	h_contact[contact_point] = 1 * kSq * h_ratio; 
+
+	d_loc = static_cast<int>(M_w * 0.5f);
 }
 
 void Tine::noteStarted()
@@ -167,7 +173,11 @@ float Tine::processSample()
 
 	//TODO pickup filtering goes here...
 
-	return limit(sample * 100.0f);
+	sample = limit(sample * 200.0f);
+
+	//sample = pickup.processSample(sample);
+
+	return sample;
 }
 
 void Tine::renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
@@ -278,7 +288,26 @@ void Tine::calculateScheme()
 		- S * (2 * w[0][1]))
 		* D;
 
+	if (isStopped)
+		applyDamping();
+
 	updateStates();
+}
+
+void Tine::applyDamping()
+{
+	float d_eta = w[1][d_loc];
+	float d_etaPrev = w[0][d_loc];
+	float wStar = w[2][d_loc];
+
+
+	float rPlus = K1 / 4 + K3 * (d_eta * d_eta) / 2 + R / (2 * k);
+	float rMinus = K1 / 4 + K3 * (d_eta * d_eta) / 2 - R / (2 * k);
+
+	float d_force = ((wStar + (K1 / (2 * rPlus) * d_eta) + (rMinus / (rPlus)*d_etaPrev)) 
+		/ (1 / rPlus + (1 / h * kSq) / (rho * A * (1 + sigma_0 * k)))) * 0.5;
+
+	w[2][d_loc] = wStar - (1 / h) * ((kSq * d_force) / (rho * A * (1 + sigma_0 * k)));
 }
 
 void Tine::updateStates()
@@ -424,5 +453,5 @@ float Tine::calculateLength(float freq)
 bool Tine::isNoteValid()
 {
 	auto note = getCurrentlyPlayingNote().initialNote;
-	return  note >= 21 && note <= 100;
+	return  note >= config::mpe::minNote && note <= config::mpe::maxNote;
 }

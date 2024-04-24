@@ -173,7 +173,7 @@ float Tine::processSample()
 
 	//TODO pickup filtering goes here...
 
-	sample = limit(sample * 200.0f);
+	sample = limit(sample * 500.0f);
 
 	//sample = pickup.processSample(sample);
 

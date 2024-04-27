@@ -14,7 +14,7 @@ def sim():
     
     lenSound = math.floor(fs * 0.5) #length of sound in samples
 
-    L = 0.1564
+    L = 0.0864
     rho = 7850 #material Density
     r = 1.524 * 10 **-3
     A = math.pi * r**2 #cross-sectional area
@@ -83,17 +83,9 @@ def sim():
     # rcX = range(0,width); # x-locations for raised cosine
     # rc = np.array([0.5 - 0.5 * math.cos(2 * math.pi * x / width) for x in rcX]) # raised cosine
     # u[loc-halfWidth : loc+halfWidth] = rc # initialise current state
-
-    #spreading operator
+    
     d_xi = (0.8 * M_w)
     d_x = int(d_xi)
-    d_alpha = d_xi - d_x
-
-    d_I = np.array([-d_alpha*(d_alpha - 1)*(d_alpha - 2) / 6,
-                    (d_alpha - 1) * (d_alpha + 1) * (d_alpha - 2) / 2,
-                    -d_alpha * (d_alpha + 1) * (d_alpha - 2) / 2,
-                    d_alpha * (d_alpha + 1) * (d_alpha - 1) / 6]) 
-    d_J = d_I * 1 / h
     
     K1 = 100
     K3 = 100000

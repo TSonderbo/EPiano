@@ -11,13 +11,14 @@
 
 //==============================================================================
 EPianoAudioProcessorEditor::EPianoAudioProcessorEditor (EPianoAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), oscilloscope(audioProcessor.getAudioBufferQueue())
+    : AudioProcessorEditor (&p), audioProcessor (p), oscilloscope(audioProcessor.getAudioBufferQueue()), 
+    toneComponent(p)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
 
     addAndMakeVisible(oscilloscope);
-
+    addAndMakeVisible(toneComponent);
     setSize(1280, 720);
 }
 
@@ -48,6 +49,12 @@ void EPianoAudioProcessorEditor::resized()
         .withMinWidth(200.0f)
         .withMinHeight(200.0f)
         .withFlex(1.0f));
+
+    main.items.add(juce::FlexItem(toneComponent)
+        .withMinWidth(200.0f)
+        .withMinHeight(200.0f)
+        .withFlex(1.0f));
+
 
     main.performLayout(getLocalBounds().toFloat());
 }

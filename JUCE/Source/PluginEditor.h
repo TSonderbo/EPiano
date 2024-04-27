@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "ScopeComponent.h"
+#include "ToneComponent.h"
 //==============================================================================
 /**
 */
@@ -30,6 +31,7 @@ private:
     EPianoAudioProcessor& audioProcessor;
 
     ScopeComponent oscilloscope;
+    ToneComponent toneComponent;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EPianoAudioProcessorEditor)
 };

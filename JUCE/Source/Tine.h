@@ -34,6 +34,7 @@ public:
 	//===============================================================================
 	void prepareToPlay(double sampleRate);
 	float processSample();
+	void setParameters(juce::NamedValueSet valueSet);
 
 private:
 

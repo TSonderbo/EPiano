@@ -29,11 +29,11 @@ private:
     int N;
 
     float K = 1.5f * pow(10, 11); //Hammer stiffness/Spring constant
-    float alpha = 2.5f; //Local geometry of impact coefficient - typically in range[1.5, 3.5]
-    float mu = 0.5f;
+    float alpha = 2.8f; //Local geometry of impact coefficient - typically in range[1.5, 3.5]
+    float mu = 0.6f;
     float m = 1.1f * pow(10, -2); //Hammer mass
 
-    const float uIn = -1.0f * pow(10, -3); //Initial hammer position
+    const float uIn = -1.0f * pow(10, -4); //Initial hammer position
     float u;
     float uPrev;
 
@@ -41,6 +41,7 @@ private:
     float xPrev;
 
     bool active;
+    bool hasMadeContact;
 
     std::vector<float> contact;
 

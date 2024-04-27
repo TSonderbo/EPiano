@@ -36,6 +36,21 @@
               file="Source/MagneticPickup.cpp"/>
       </GROUP>
       <GROUP id="{35A18BBF-D199-C687-EB6F-C54F7F18F8CA}" name="Components">
+        <GROUP id="{B83482DA-6B86-EA5D-EABB-651C42B49DCE}" name="Custom">
+          <FILE id="kL1ziM" name="ControlKnob.cpp" compile="1" resource="0" file="Source/ControlKnob.cpp"/>
+          <FILE id="DuzesN" name="ControlKnob.h" compile="0" resource="0" file="Source/ControlKnob.h"/>
+        </GROUP>
+        <FILE id="dILEzi" name="VolumeComponent.cpp" compile="1" resource="0"
+              file="Source/VolumeComponent.cpp"/>
+        <FILE id="RTjWbX" name="VolumeComponent.h" compile="0" resource="0"
+              file="Source/VolumeComponent.h"/>
+        <FILE id="G9qHO6" name="ExcitationComponent.cpp" compile="1" resource="0"
+              file="Source/ExcitationComponent.cpp"/>
+        <FILE id="PbSPAt" name="ExcitationComponent.h" compile="0" resource="0"
+              file="Source/ExcitationComponent.h"/>
+        <FILE id="PL16FR" name="ToneComponent.cpp" compile="1" resource="0"
+              file="Source/ToneComponent.cpp"/>
+        <FILE id="TWSyqf" name="ToneComponent.h" compile="0" resource="0" file="Source/ToneComponent.h"/>
         <FILE id="BBizOl" name="ScopeComponent.h" compile="0" resource="0"
               file="Source/ScopeComponent.h"/>
         <FILE id="nfLA6c" name="ScopeComponent.cpp" compile="1" resource="0"

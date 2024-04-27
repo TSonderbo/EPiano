@@ -16,7 +16,8 @@
 //==============================================================================
 /**
 */
-class EPianoAudioProcessor  : public juce::AudioProcessor
+class EPianoAudioProcessor  : public juce::AudioProcessor,
+    private juce::Timer
                             #if JucePlugin_Enable_ARA
                              , public juce::AudioProcessorARAExtension
                             #endif
@@ -68,13 +69,17 @@ private:
     juce::MPESynthesiser synth;
     AudioBufferQueue audioBufferQueue;
     ScopeDataCollector scopeDataCollector{ audioBufferQueue };
+    juce::NamedValueSet paramValueSet; //Used to track if parameters have changed
 
-    juce::MidiBuffer uiMidiBuffer;
-
+    bool updateParams;
 
     //==============================================================================
 
+    void timerCallback() override;
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParams();
+    bool checkParameterValues();
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EPianoAudioProcessor)
 };

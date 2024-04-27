@@ -18,7 +18,6 @@ Tine::Tine()
 
 void Tine::prepareToPlay(double sampleRate)
 {
-
 	pickup.prepareToPlay(sampleRate);
 
 	k = 1.0f / (sampleRate * config::oversampling);
@@ -110,6 +109,9 @@ void Tine::noteStarted()
 
 	prepareGrid(freq);
 
+	pickup.reset();
+	pickup.setFreq(freq);
+
 	hammer.beginHammer(velocity);
 
 	isStopped = false;
@@ -155,6 +157,8 @@ void Tine::notePitchbendChanged()
 	calculateInterpolation();
 
 	updateGridpoints(Nprev);
+
+	pickup.setFreq(freq);
 }
 
 float Tine::processSample()
@@ -173,11 +177,17 @@ float Tine::processSample()
 
 	//TODO pickup filtering goes here...
 
-	sample = limit(sample * 500.0f);
+	sample = limit(sample * 1000.0f);
 
-	//sample = pickup.processSample(sample);
+	sample = pickup.processSample(sample);
 
 	return sample;
+}
+
+void Tine::setParameters(juce::NamedValueSet paramValueSet)
+{
+	//Set pickup values
+	pickup.setParameters(paramValueSet);
 }
 
 void Tine::renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)

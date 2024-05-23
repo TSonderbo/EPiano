@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="QVlzdb" name="EPiano" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="FOlwW6" name="EPiano">
     <GROUP id="{286DA3B9-0C1F-4203-D871-17D49232E4CA}" name="Source">
       <GROUP id="{3D3B6CEF-3C18-90F6-C0D9-35EC549D7FC2}" name="Configuration">
@@ -63,7 +64,7 @@
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="EPiano"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="EPiano"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EPiano" vst3BinaryLocation="C:\Program Files\Vstplugins"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="../../../../SDKs/JUCE/modules"/>

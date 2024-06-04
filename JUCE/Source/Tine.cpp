@@ -19,12 +19,19 @@ Tine::Tine()
 void Tine::prepareToPlay(double sampleRate)
 {
 	pickup.prepareToPlay(sampleRate);
+	this->sampleRate = sampleRate;
+	tine_gain.reset(sampleRate, config::tine::smoothDuration);
+	tine_gain.setCurrentAndTargetValue(config::tine::tineGain);
+}
 
-	k = 1.0f / (sampleRate * config::oversampling);
+void Tine::prepareGrid(float freq)
+{
+	oversampling = calculateOversampling();
+
+	k = 1.0f / (sampleRate * oversampling);
 	kSq = k * k;
-	this->sampleRate = sampleRate * config::oversampling;
 
-	h = sqrtf((4.0f * sigma_1 * k + sqrtf(pow((4.0f * sigma_1 * k), 2.0f) + 16.0f * kappa * kappa * k * k)) / 2.0f);
+	calculateGridSpacing();
 
 	hSq = h * h;
 
@@ -33,27 +40,25 @@ void Tine::prepareToPlay(double sampleRate)
 
 	//Calculate Coefficients
 	S = (2.0f * sigma_1 * k) / hSq;
+	S_2 = 2.0f * S;
 
-	C_0 = (2.0f - 6.0f * muSq - (4.0f * sigma_1 * k) / hSq);
+	C_0 = (2.0f - 6.0f * muSq - S_2);
 	C_1 = 4.0f * muSq + S;
-	B_0 = (-1.0f + sigma_0 * k + ((4.0f * sigma_1 * k) / hSq));
+	B_0 = (-1.0f + sigma_0 * k + S_2);
 	D = 1.0f / (1.0f + sigma_0 * k);
 
-	F_0 = (2.0f - 5.0f * muSq - ((4.0f * sigma_1 * k) / hSq));
-	F_1 = ((2.0f * sigma_1 * k) / hSq + 2.0f * muSq);
-	F_2 = (2.0f - 2.0f * muSq - ((4.0f * sigma_1 * k) / hSq));
+	F_0 = (2.0f - 5.0f * muSq - S_2);
+	F_1 = (S + 2.0f * muSq);
+	F_2 = (2.0f - 2.0f * muSq - S_2);
 
-	isPrepared = true;
-
-}
-
-void Tine::prepareGrid(float freq)
-{
 	L = calculateLength(freq);
 
 	N = static_cast<int>(L / h);
 	N_frac = L / h;
 	alpha = N_frac - N;
+
+	//Ensure minimum grid points
+	jassert(N >= 10);
 
 	calculateInterpolation();
 
@@ -85,7 +90,7 @@ void Tine::prepareGrid(float freq)
 
 	h_contact[contact_point] = 1;
 
-	hammer.prepareToPlay(sampleRate, h_contact, M_u);
+	hammer.prepareToPlay(k, h_contact, M_u);
 	h_ratio = hammer.getMass() / (rho * A * L);
 
 	//Pre-calculate hammer contact
@@ -99,7 +104,6 @@ void Tine::noteStarted()
 	jassert(currentlyPlayingNote.isValid());
 	jassert(currentlyPlayingNote.keyState == juce::MPENote::keyDown
 		|| currentlyPlayingNote.keyState == juce::MPENote::keyDownAndSustained);
-	jassert(isPrepared);
 
 	if (isNoteValid() == false)
 		return;
@@ -168,7 +172,7 @@ float Tine::processSample()
 
 	float sample;
 
-	for (size_t i = 0; i < config::oversampling; i++)
+	for (size_t i = 0; i < oversampling; i++)
 	{
 		calculateScheme();
 	}
@@ -177,9 +181,14 @@ float Tine::processSample()
 
 	//TODO pickup filtering goes here...
 
-	sample = limit(sample * 1000.0f);
+	sample = sample * tine_gain.getNextValue();
 
-	sample = pickup.processSample(sample);
+	if (pickup_bypass == false)
+	{
+		sample = pickup.processSample(sample);
+	}
+
+	sample = limit(sample);
 
 	return sample;
 }
@@ -188,6 +197,12 @@ void Tine::setParameters(juce::NamedValueSet paramValueSet)
 {
 	//Set pickup values
 	pickup.setParameters(paramValueSet);
+
+	using namespace config::parameter;
+
+	tine_gain.setTargetValue(paramValueSet[id_tine_gain]);
+
+	pickup_bypass = static_cast<bool>(paramValueSet[id_pickup_bypass]);
 }
 
 void Tine::renderNextBlock(juce::AudioBuffer<float>& outputBuffer, int startSample, int numSamples)
@@ -457,11 +472,38 @@ float Tine::limit(float sample)
 
 float Tine::calculateLength(float freq)
 {
-	return sqrt(((1.426f * juce::MathConstants<float>::pi * K * kappa_1) / freq) / 8);
+	return sqrt((1.426f * juce::MathConstants<float>::pi * K * kappa_1 / freq) / 8);
 }
 
 bool Tine::isNoteValid()
 {
 	auto note = getCurrentlyPlayingNote().initialNote;
 	return  note >= config::mpe::minNote && note <= config::mpe::maxNote;
+}
+
+void inline Tine::calculateGridSpacing()
+{
+	h = sqrtf((4.0f * sigma_1 * k + sqrtf(pow((4.0f * sigma_1 * k), 2.0f) + 16.0f * kappa * kappa * kSq)) / 2.0f);
+}
+
+int Tine::calculateOversampling()
+{
+	auto note = getCurrentlyPlayingNote().initialNote;
+
+	if (note < 40)
+	{
+		return 4;
+	}
+	else if (note < 52)
+	{
+		return 8;
+	}
+	else if (note < 64)
+	{
+		return 16;
+	}
+	else
+	{
+		return 32;
+	}
 }

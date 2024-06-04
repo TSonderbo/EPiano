@@ -22,12 +22,15 @@ ToneComponent::ToneComponent(EPianoAudioProcessor& p) : processor(p)
 	gainKnob.configure(p, id_pickup_gain, name_pickup_gain);
 	symmetryKnob.configure(p, id_pickup_symmetry, name_pickup_symmetry);
 
+	pickupToggle.setButtonText("Bypass");
+	attachment.reset(new juce::AudioProcessorValueTreeState::ButtonAttachment(p.apvts, id_pickup_bypass, pickupToggle));
+
 	addAndMakeVisible(lowpassCutoffKnob);
 	addAndMakeVisible(lowpassResonanceKnob);
 	addAndMakeVisible(highpassResonanceKnob);
 	addAndMakeVisible(gainKnob);
 	addAndMakeVisible(symmetryKnob);
-
+	addAndMakeVisible(pickupToggle);
 }
 
 ToneComponent::~ToneComponent()
@@ -52,6 +55,8 @@ void ToneComponent::paint(juce::Graphics& g)
 
 void ToneComponent::resized()
 {
+	pickupToggle.setBounds(12, 30, 100, 20);
+
 	juce::FlexBox fb;
 	fb.flexDirection = juce::FlexBox::Direction::column;
 

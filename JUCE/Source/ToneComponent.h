@@ -11,8 +11,9 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "PluginProcessor.h"
 #include "ControlKnob.h"
-
+#include "Configuration.h"
 
 //==============================================================================
 /*
@@ -34,6 +35,9 @@ private:
 
     ControlKnob gainKnob;
     ControlKnob symmetryKnob;
+
+    juce::ToggleButton pickupToggle;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
 
     EPianoAudioProcessor& processor;
 

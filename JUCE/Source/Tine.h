@@ -40,8 +40,10 @@ private:
 
 	//Util
 	double sampleRate; //Sample rate
+	int oversampling;
 	float k; //Sampling period
 	float kSq; //Sampling period squared
+
 	int outLoc;
 	bool isPrepared;
 
@@ -94,8 +96,10 @@ private:
 	std::vector<float> h_contact; //Hammer contact distribution
 	float h_ratio; //Hammer-Tine mass ratio
 
-	//Filter
+	//Pickup
 	Pickup pickup;
+	juce::SmoothedValue<float> tine_gain;
+	bool pickup_bypass;
 
 	//Damper
 	float K1 = 100; //Spring coefficient
@@ -110,6 +114,7 @@ private:
 	float C_1;
 	float B_0;
 	float S;
+	float S_2;
 	float D;
 
 	float A_0;
@@ -139,5 +144,7 @@ private:
 	float limit(float sample);
 	bool isNoteValid();
 	void applyDamping();
+	void calculateGridSpacing();
+	int calculateOversampling();
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Tine)
 };

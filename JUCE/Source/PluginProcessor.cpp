@@ -209,9 +209,9 @@ void EPianoAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 	// You could do that either as raw data, or use the XML or ValueTree classes
 	// as intermediaries to make it easy to save and load complex data.
 
-	/*auto state = apvts.copyState();
+	auto state = apvts.copyState();
 	std::unique_ptr<juce::XmlElement> xml(state.createXml());
-	copyXmlToBinary(*xml, destData);*/
+	copyXmlToBinary(*xml, destData);
 }
 
 void EPianoAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -219,12 +219,12 @@ void EPianoAudioProcessor::setStateInformation(const void* data, int sizeInBytes
 	// You should use this method to restore your parameters from this memory block,
 	// whose contents will have been created by the getStateInformation() call.
 
-	/*std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+	std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
 	if (xmlState != nullptr) {
 		if (xmlState->hasTagName(apvts.state.getType())) {
 			apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
 		}
-	}*/
+	}
 }
 
 //==============================================================================
@@ -248,11 +248,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout EPianoAudioProcessor::create
 
 	//Tone control
 	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_lowpass_cutoff, name_pickup_lowpass_cutoff, juce::NormalisableRange<float>(200.0f, 2000.0f), config::pickup::lpCutoff));
-	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_lowpass_resonance, name_pickup_lowpass_resonance, juce::NormalisableRange<float>(0.1f, 4.0f), config::pickup::resonance));
-	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_highpass_resonance, name_pickup_highpass_resonance, juce::NormalisableRange<float>(0.1f, 4.0f), config::pickup::resonance));
+	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_lowpass_resonance, name_pickup_lowpass_resonance, juce::NormalisableRange<float>(0.1f, 1.0f), config::pickup::resonance));
+	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_highpass_resonance, name_pickup_highpass_resonance, juce::NormalisableRange<float>(0.1f, 1.0f), config::pickup::resonance));
 	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_gain, name_pickup_gain, juce::NormalisableRange<float>(0.1f, 30.0f), config::pickup::gain));
 	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_pickup_symmetry, name_pickup_symmetry, juce::NormalisableRange<float>(0.1f, 30.0f), config::pickup::symmetry));
 	params.push_back(std::make_unique<juce::AudioParameterBool>(id_pickup_bypass, name_pickup_bypass, false));
+	
+
+	//Volume Controls
+	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_master_volume, name_master_volume, juce::NormalisableRange<float>(0.1f, 2.0f), config::master_volume));
+	params.push_back(std::make_unique<juce::AudioParameterFloat>(id_tine_gain, name_tine_gain, juce::NormalisableRange<float>(1.0f, 20000.0f), config::tine::tineGain));
+
 
 	return { params.begin(), params.end() };
 }
@@ -267,13 +273,16 @@ bool EPianoAudioProcessor::checkParameterValues()
 	bool paramChanged = false;
 
 	using namespace config::parameter;
-
+	//Tone control
 	paramChanged |= paramValueSet.set(id_pickup_lowpass_cutoff, apvts.getRawParameterValue(id_pickup_lowpass_cutoff)->load());
 	paramChanged |= paramValueSet.set(id_pickup_lowpass_resonance, apvts.getRawParameterValue(id_pickup_lowpass_resonance)->load());
 	paramChanged |= paramValueSet.set(id_pickup_highpass_resonance, apvts.getRawParameterValue(id_pickup_highpass_resonance)->load());
 	paramChanged |= paramValueSet.set(id_pickup_gain, apvts.getRawParameterValue(id_pickup_gain)->load());
 	paramChanged |= paramValueSet.set(id_pickup_symmetry, apvts.getRawParameterValue(id_pickup_symmetry)->load());
 	paramChanged |= paramValueSet.set(id_pickup_bypass, apvts.getRawParameterValue(id_pickup_bypass)->load());
+	//Volume Controls
+	paramChanged |= paramValueSet.set(id_master_volume, apvts.getRawParameterValue(id_master_volume)->load());
+	paramChanged |= paramValueSet.set(id_tine_gain, apvts.getRawParameterValue(id_tine_gain)->load());
 
 	return paramChanged;
 }

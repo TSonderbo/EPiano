@@ -15,10 +15,9 @@ Hammer::Hammer()
 
 }
 
-void Hammer::prepareToPlay(double sampleRate, std::vector<float> contact, int N)
+void Hammer::prepareToPlay(double k, std::vector<float> contact, int N)
 {
-    k = 1.0f / (sampleRate * config::oversampling);
-
+    this->k = k;
     this->contact = contact;
     this->N = N;
     //TODO set stiffness based on hammer/tine number

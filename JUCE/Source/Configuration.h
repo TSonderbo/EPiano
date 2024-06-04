@@ -16,21 +16,25 @@ namespace config
 {
 	//Universal
 	unsigned const int oversampling = 32;
+	unsigned const int master_volume = 1.0f;
+
 
 	//Tines
 	namespace tine
 	{
 		unsigned const int count = 73;
 		const float inactiveTimer = 0.2f;
+		unsigned const int tineGain = 10000.0f;
+		const float smoothDuration = 0.2f;
 	}
 	
 	//MPE-MIDI
 	namespace mpe
 	{
-		unsigned const int numVoices = 5;
+		unsigned const int numVoices = 1;
 		unsigned const int minNote = 28;
 		unsigned const int maxNote = 100;
-		const float maxInputVelocity = 4.0f;
+		const float maxInputVelocity = 6.0f;
 	}
 
 	namespace pickup
@@ -48,11 +52,8 @@ namespace config
 		//Input velocity
 		const juce::String id_velocity("velocity");
 		const juce::String name_velocity("Velocity");
-		
-		//Amplitude
-		const juce::String id_amplitude("amplitude");
-		const juce::String name_amplitude("Amplitude");
 
+#pragma region pickup
 		//Magnetic pickup lowpass cutoff
 		const juce::String id_pickup_lowpass_cutoff("tone_cutoff");
 		const juce::String name_pickup_lowpass_cutoff("Tone");
@@ -76,6 +77,15 @@ namespace config
 		//Magnetic pickup bypass
 		const juce::String id_pickup_bypass("tone_bypass");
 		const juce::String name_pickup_bypass("Tone bypass");
+#pragma endregion 
+
+		//Master Volume
+		const juce::String id_master_volume("master_volume");
+		const juce::String name_master_volume("Master");
+
+		//Pre Pickup Volume
+		const juce::String id_tine_gain("tine_gain");
+		const juce::String name_tine_gain("Tine");
 	}
 }
 

@@ -19,7 +19,7 @@ void Pickup::prepareToPlay(double sampleRate)
 
 	gain.prepare(spec);
 	gain.setGainDecibels(config::pickup::gain);
-	gain.setRampDurationSeconds(config::pickup::smoothDuration); //20 seconds?
+	gain.setRampDurationSeconds(config::pickup::smoothDuration);
 
 	symmetry_gain.prepare(spec);
 	symmetry_gain.setGainDecibels(config::pickup::symmetry);
